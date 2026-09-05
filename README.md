@@ -214,6 +214,14 @@ El backend contempla ejecucion en entornos serverless (por ejemplo Vercel):
 
 La carpeta `docs/architecture.md` registra la arquitectura objetivo para la siguiente etapa: frontend React con MSAL, API Gateway, BFF protegido con JWT y servicios backend separados. El código actual se conserva como referencia funcional de maquinaria, mantenimientos, usuarios y reportes; no se considera todavía la implementación final de esa arquitectura.
 
+## Nueva base de trabajo
+
+- Frontend React/Vite: `frontend/`
+- BFF independiente preparado para Azure AD: `backend/`
+- El frontend se inicia con `npm install` y `npm run build` dentro de `frontend/`.
+- El BFF se inicia con `npm install` y `npm run dev` dentro de `backend/`.
+- Copia los archivos `.env.example` correspondientes cuando se vaya a configurar el entorno.
+
 ## Solucion de problemas
 
 ### PostgreSQL no inicia
