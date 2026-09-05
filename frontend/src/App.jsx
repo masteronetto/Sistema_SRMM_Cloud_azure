@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useIsAuthenticated } from '@azure/msal-react';
 import AzureSession from './components/AzureSession';
+import MaquinariaDashboard from './components/MaquinariaDashboard';
 import { getCurrentUser } from './api/client';
 
 const domains = [
@@ -36,51 +37,62 @@ function AuthenticatedActions() {
 }
 
 export default function App({ azureConfigured }) {
+  const [activeView, setActiveView] = useState('home');
+
   return (
     <main className="app-shell">
       <header className="topbar">
-        <a className="brand" href="/" aria-label="SRMM inicio">
+        <button className="brand brand-button" type="button" onClick={() => setActiveView('home')} aria-label="SRMM inicio">
           <span className="brand-mark">S</span>
           <span>SRMM <small>cloud base</small></span>
-        </a>
+        </button>
         {azureConfigured && <AzureSession />}
       </header>
 
-      <section className="hero">
-        <div>
-          <p className="eyebrow">Sistema de gestión operacional</p>
-          <h1>Una base limpia para construir el nuevo SRMM.</h1>
-          <p className="hero-copy">
-            Frontend React preparado para Microsoft Entra ID y un BFF separado. La identidad y la persistencia se conectarán cuando el tenant esté listo.
-          </p>
-          {azureConfigured ? (
-            <AuthenticatedActions />
-          ) : (
-            <div className="setup-note">
-              <strong>Tenant pendiente</strong>
-              <span>Configura las variables VITE_AZURE_* para habilitar el inicio de sesión.</span>
-            </div>
-          )}
-        </div>
-        <aside className="architecture-panel">
-          <span className="panel-label">Estado de la base</span>
-          <strong>React + MSAL + BFF</strong>
-          <div className="status-line"><i /> API desacoplada</div>
-          <div className="status-line"><i /> Tokens fuera del código</div>
-          <div className="status-line"><i /> Persistencia pendiente</div>
-        </aside>
-      </section>
+      {activeView === 'machinery' ? (
+        <>
+          <button className="back-button" type="button" onClick={() => setActiveView('home')}>← Volver al inicio</button>
+          <MaquinariaDashboard />
+        </>
+      ) : <>
+        <section className="hero">
+          <div>
+            <p className="eyebrow">Sistema de gestión operacional</p>
+            <h1>Una base limpia para construir el nuevo SRMM.</h1>
+            <p className="hero-copy">
+              Frontend React preparado para Microsoft Entra ID y un BFF separado. La identidad y la persistencia se conectarán cuando el tenant esté listo.
+            </p>
+            {azureConfigured ? (
+              <AuthenticatedActions />
+            ) : (
+              <div className="setup-note">
+                <strong>Tenant pendiente</strong>
+                <span>Configura las variables VITE_AZURE_* para habilitar el inicio de sesión.</span>
+              </div>
+            )}
+          </div>
+          <aside className="architecture-panel">
+            <span className="panel-label">Estado de la base</span>
+            <strong>React + MSAL + BFF</strong>
+            <div className="status-line"><i /> API desacoplada</div>
+            <div className="status-line"><i /> Tokens fuera del código</div>
+            <div className="status-line"><i /> Persistencia pendiente</div>
+          </aside>
+        </section>
 
-      <section className="domain-grid" aria-label="Módulos preparados">
-        {domains.map((domain) => (
-          <article className="domain-card" key={domain.title}>
-            <span className="card-index">0{domains.indexOf(domain) + 1}</span>
-            <h2>{domain.title}</h2>
-            <p>{domain.description}</p>
-            <span className="card-status">{domain.status}</span>
-          </article>
-        ))}
-      </section>
+        <section className="domain-grid" aria-label="Módulos preparados">
+          {domains.map((domain) => (
+            <article className="domain-card" key={domain.title}>
+              <span className="card-index">0{domains.indexOf(domain) + 1}</span>
+              <h2>{domain.title}</h2>
+              <p>{domain.description}</p>
+              {domain.title === 'Maquinaria' ? (
+                <button className="card-status card-link" type="button" onClick={() => setActiveView('machinery')}>Abrir módulo</button>
+              ) : <span className="card-status">{domain.status}</span>}
+            </article>
+          ))}
+        </section>
+      </>}
     </main>
   );
 }

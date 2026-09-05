@@ -14,6 +14,7 @@ button { cursor: pointer; }
 .app-shell { min-height: 100vh; padding: 28px clamp(20px, 5vw, 76px) 64px; background: radial-gradient(circle at 85% 0%, #dcefe9 0, transparent 32%), #eef3f1; }
 .topbar { display: flex; align-items: center; justify-content: space-between; max-width: 1240px; margin: 0 auto; }
 .brand { display: inline-flex; align-items: center; gap: 11px; color: #142033; font-weight: 800; letter-spacing: .02em; text-decoration: none; }
+.brand-button { border: 0; padding: 0; background: transparent; text-align: left; }
 .brand small { display: block; color: #668078; font-size: .68rem; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; }
 .brand-mark { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 10px; color: #f7fbfa; background: #147d6b; }
 .hero { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(260px, .6fr); gap: 48px; align-items: end; max-width: 1240px; margin: 100px auto 76px; }
@@ -40,10 +41,38 @@ h1 { max-width: 760px; margin: 0; font-size: clamp(2.5rem, 6vw, 5.8rem); line-he
 .domain-card h2 { margin: 36px 0 8px; font-size: 1.35rem; }
 .domain-card p { margin: 0; color: #60716d; }
 .card-status { display: inline-block; margin-top: 25px; color: #147d6b; font-size: .77rem; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; }
+.card-link { border: 0; padding: 0; background: transparent; cursor: pointer; }
+.back-button { display: block; max-width: 1240px; margin: 60px auto 0; padding: 0; border: 0; color: #147d6b; background: transparent; font-weight: 800; }
+.machinery-view { max-width: 1240px; margin: 34px auto 0; }
+.view-heading { display: flex; justify-content: space-between; gap: 24px; align-items: end; padding-bottom: 28px; border-bottom: 1px solid #d4e3df; }
+.view-heading h1 { font-size: clamp(2.4rem, 5vw, 4.6rem); }
+.view-copy { max-width: 620px; margin: 16px 0 0; color: #60716d; }
+.role-badge { padding: 9px 12px; border-radius: 99px; color: #147d6b; background: #e4f0ed; font-size: .82rem; font-weight: 800; }
+.machinery-layout { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(300px, .6fr); gap: 16px; margin-top: 24px; }
+.machinery-panel { min-width: 0; padding: 24px; border: 1px solid #d4e3df; border-radius: 8px; background: #fff; box-shadow: 0 15px 40px rgba(25, 69, 59, .06); }
+.panel-toolbar { display: flex; justify-content: space-between; gap: 18px; align-items: start; margin-bottom: 22px; }
+.panel-toolbar h2 { margin: 0; font-size: 1.25rem; }
+.panel-toolbar p { margin: 5px 0 0; color: #60716d; font-size: .88rem; }
+.table-wrap { overflow-x: auto; }
+table { width: 100%; min-width: 650px; border-collapse: collapse; text-align: left; font-size: .88rem; }
+th { padding: 0 12px 12px; color: #60716d; font-size: .72rem; letter-spacing: .08em; text-transform: uppercase; }
+td { padding: 15px 12px; border-top: 1px solid #e5eeeb; color: #60716d; }
+td strong { color: #142033; }
+.table-action { border: 0; color: #147d6b; background: transparent; font-weight: 800; cursor: pointer; }
+.empty-row { padding: 32px 12px; text-align: center; }
+.machinery-form { display: flex; flex-direction: column; gap: 16px; }
+.machinery-form label { display: flex; flex-direction: column; gap: 7px; color: #142033; font-size: .82rem; font-weight: 800; }
+.machinery-form input, .machinery-form select, .machinery-form textarea { width: 100%; padding: 11px 12px; border: 1px solid #cbdcd7; border-radius: 5px; color: #142033; background: #f7faf9; font: inherit; font-weight: 500; }
+.machinery-form textarea { min-height: 100px; resize: vertical; }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.form-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.form-status { margin: 0; color: #147d6b; font-size: .86rem; font-weight: 700; }
 
 @media (max-width: 760px) {
   .app-shell { padding-top: 20px; }
   .hero { grid-template-columns: 1fr; gap: 30px; margin-top: 74px; }
   .domain-grid { grid-template-columns: 1fr; }
   .session-user { display: none; }
+  .view-heading, .machinery-layout { grid-template-columns: 1fr; display: grid; }
+  .form-row { grid-template-columns: 1fr; }
 }
