@@ -1,0 +1,33 @@
+{
+  "version": 2,
+  "buildCommand": "npm install",
+  "regions": ["iad1"],
+  "cleanUrls": true,
+  "trailingSlash": false,
+  "env": {
+    "NODE_ENV": "production"
+  },
+  "functions": {
+    "src/server.js": {
+      "includeFiles": "{frontend/**,public/**}"
+    }
+  },
+  "headers": [
+    {
+      "source": "/:path*.(js|css|svg|png|jpg|jpeg|gif|ico|woff|woff2)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
+      ]
+    }
+  ],
+  "rewrites": [
+    { "source": "/reset", "destination": "/reset.html" },
+    { "source": "/recover", "destination": "/recover.html" },
+    { "source": "/login", "destination": "/login.html" },
+    { "source": "/", "destination": "/login.html" },
+    { "source": "/((?!api|.*\\..*).*)", "destination": "/login.html" }
+  ]
+}

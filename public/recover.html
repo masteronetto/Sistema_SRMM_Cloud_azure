@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>SRMM | Recuperar contraseña</title>
+  <link rel="icon" href="/favicon.svg">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root{--accent:#6d5141;--muted:#7a6c62;--panel:#fff;--bg:#faf6f2}
+    *,*::before,*::after{box-sizing:border-box}
+    body{margin:0;font-family:Inter,system-ui,Arial,sans-serif;background:linear-gradient(180deg,var(--bg) 0%,#f3ede6 100%);display:grid;place-items:center;min-height:100vh;padding:20px}
+    .card{background:var(--panel);border-radius:18px;padding:24px;max-width:520px;width:min(100%,520px);box-shadow:0 12px 32px rgba(12,10,8,0.08)}
+    .card h1{margin:0 0 8px;letter-spacing:-0.02em;font-size:clamp(1.5rem,2.5vw,2rem)}
+    .card p.small{margin:0 0 20px;color:var(--muted);line-height:1.5}
+    form{display:grid;gap:14px}
+    input{padding:14px 16px;border-radius:12px;border:1px solid #e9ddd3;background:#faf7f4;width:100%;font-size:1rem}
+    button{width:100%;background:var(--accent);color:#fff;border:0;padding:14px 16px;border-radius:12px;font-weight:700;font-size:1rem;cursor:pointer;transition:transform .2s ease,filter .2s ease}
+    button:hover{filter:brightness(1.05);transform:translateY(-1px)}
+    .actions{display:grid;gap:12px}
+    .secondary{background:#ddd8d3;color:#26201c}
+    #msg{margin-top:10px;font-weight:700;line-height:1.4}
+    @media (max-width: 420px){
+      body{padding:16px}
+      .card{padding:20px}
+      button,input{font-size:.98rem}
+    }
+  </style>
+</head>
+<body>
+  <main class="card">
+    <h1>Recuperar contraseña</h1>
+    <p class="small">Ingresa tu correo y te enviaremos un enlace para restablecerla.</p>
+    <form id="recoverForm">
+      <input type="email" id="email" placeholder="Correo electrónico" required>
+      <div style="height:10px"></div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        <button type="submit">Enviar enlace</button>
+        <button type="button" id="cancelBtn" style="background:#ddd8d3;color:#26201c;">Cancelar</button>
+      </div>
+    </form>
+    <div id="msg" style="margin-top:10px;color:#3d6f19;font-weight:700"></div>
+  </main>
+  <script>
+    const form = document.getElementById('recoverForm');
+    const msg = document.getElementById('msg');
+    const cancelBtn = document.getElementById('cancelBtn');
+
+    cancelBtn.addEventListener('click', () => {
+      window.location.href = '/login.html';
+    });
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault(); msg.textContent='';
+      const email = document.getElementById('email').value;
+      try{
+        const res = await fetch('/api/auth/recover', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email})});
+        const data = await res.json();
+        msg.style.color = res.ok ? 'green' : '#9f2934';
+        msg.textContent = data.message || 'Si el correo existe, se enviará un email.';
+      }catch(err){ msg.textContent='Error de conexión' }
+    });
+  </script>
+</body>
+</html>

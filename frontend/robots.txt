@@ -1,0 +1,15 @@
+User-agent: *
+Allow: /
+Disallow: 
+
+User-agent: Vercel-Preflight
+Allow: /
+
+User-agent: facebookexternalhit
+Allow: /
+
+User-agent: Twitterbot
+Allow: /
+
+User-agent: LinkedInBot
+Allow: /

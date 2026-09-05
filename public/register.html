@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>SRMM | Registro</title>
+  <link rel="icon" href="/favicon.svg">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --bg: #f5efe8; --panel:#ffffff; --accent:#6d5141; --accent-strong:#4d372d; --text:#201915; --muted:#7a6c62;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:Inter,system-ui,Arial;background:linear-gradient(180deg,#faf6f2 0%,#f3ede6 100%);color:var(--text);display:grid;place-items:center;min-height:100vh}
+    .card{background:var(--panel);border-radius:14px;padding:28px;max-width:520px;width:100%;box-shadow:0 12px 30px rgba(12,10,8,0.06)}
+    h1{margin:0 0 6px;font-size:1.35rem}
+    p.lead{margin:0 0 12px;color:var(--muted)}
+    form{display:grid;gap:10px}
+    input, select{padding:12px 14px;border:1px solid #e9ddd3;border-radius:10px;background:#faf7f4}
+    button{background:var(--accent);color:#fff;border:0;padding:12px 14px;border-radius:10px;font-weight:700;cursor:pointer}
+    .small{font-size:0.9rem;color:var(--muted)}
+  </style>
+</head>
+<body>
+  <main class="card">
+    <h1>Crear cuenta</h1>
+    <p class="lead">Registra un nuevo usuario como Usuario</p>
+    
+    <form id="registerForm">
+      <input type="text" id="nombre_completo" name="nombre_completo" placeholder="Nombre completo" autocomplete="name" required>
+      <input type="email" id="email" name="email" placeholder="Correo electrónico" autocomplete="username" required>
+      <input type="password" id="contrasena" name="contrasena" placeholder="Contraseña" autocomplete="new-password" required>
+      <button type="submit">Crear cuenta</button>
+    </form>
+    <p class="small">¿Ya tienes cuenta? <a href="/login.html">Inicia sesión</a></p>
+    <div id="msg" style="margin-top:10px;color:#9f2934;font-weight:700"></div>
+  </main>
+
+  <script>
+    const form = document.getElementById('registerForm');
+    const msg = document.getElementById('msg');
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault(); msg.textContent='';
+      const nombre_completo = document.getElementById('nombre_completo').value;
+      const email = document.getElementById('email').value;
+      const contrasena = document.getElementById('contrasena').value;
+      try{
+        const res = await fetch('/api/auth/register', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({nombre_completo,email,contrasena})});
+        const data = await res.json();
+        if(!res.ok){ msg.textContent = data.message || 'Error'; return; }
+        msg.style.color='green'; msg.textContent='Cuenta creada correctamente. Redirigiendo...';
+        setTimeout(()=> window.location.href='/login.html',900);
+      }catch(err){ msg.textContent='Error de conexión' }
+    });
+  </script>
+</body>
+</html>
