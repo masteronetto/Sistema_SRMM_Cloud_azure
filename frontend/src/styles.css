@@ -67,6 +67,27 @@ td strong { color: #142033; }
 .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .form-actions { display: flex; flex-wrap: wrap; gap: 10px; }
 .form-status { margin: 0; color: #147d6b; font-size: .86rem; font-weight: 700; }
+.main-nav { display: flex; gap: 6px; max-width: 1240px; margin: 28px auto 0; padding: 5px; border: 1px solid #d4e3df; border-radius: 7px; background: rgba(255,255,255,.72); }
+.nav-link { padding: 9px 13px; border-radius: 4px; color: #60716d; font-size: .86rem; font-weight: 750; text-decoration: none; }
+.nav-link-active { color: #fff; background: #147d6b; }
+.module-view { max-width: 1240px; margin: 74px auto 0; }
+.filter-panel { display: flex; flex-wrap: wrap; align-items: end; gap: 12px; margin: 24px 0 16px; padding: 18px; border: 1px solid #d4e3df; border-radius: 8px; background: #fff; }
+.filter-panel label, .toolbar-actions label { display: flex; flex-direction: column; gap: 6px; color: #142033; font-size: .78rem; font-weight: 800; }
+.filter-panel input, .filter-panel select, .toolbar-actions select, .chart-panel select { min-width: 130px; padding: 10px; border: 1px solid #cbdcd7; border-radius: 5px; color: #142033; background: #f7faf9; font: inherit; }
+.toolbar-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.report-actions { justify-content: flex-end; margin-bottom: 16px; }
+.status-message { margin: 16px 0; padding: 12px 14px; border: 1px solid #ead7a8; border-radius: 5px; color: #8a6014; background: #fff9e9; font-size: .88rem; }
+.pagination { display: flex; justify-content: center; align-items: center; gap: 14px; margin-top: 22px; color: #60716d; font-size: .86rem; }
+.access-placeholder { max-width: 760px; margin: 120px auto; padding: 42px; border: 1px solid #d4e3df; border-radius: 8px; background: #fff; box-shadow: 0 15px 40px rgba(25,69,59,.06); }
+.access-placeholder h1 { font-size: clamp(2rem, 4vw, 3.8rem); }
+.access-placeholder p:last-child { color: #60716d; }
+.metric-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin: 24px 0 16px; }
+.metric-card { padding: 22px; border: 1px solid #d4e3df; border-radius: 8px; background: #fff; }
+.metric-card span { color: #60716d; font-size: .82rem; }
+.metric-card strong { display: block; margin-top: 10px; color: #147d6b; font-size: 1.8rem; }
+.report-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+.chart-panel select { width: 100%; }
+.chart-container { height: 280px; margin-top: 18px; }
 
 @media (max-width: 760px) {
   .app-shell { padding-top: 20px; }
@@ -75,4 +96,7 @@ td strong { color: #142033; }
   .session-user { display: none; }
   .view-heading, .machinery-layout { grid-template-columns: 1fr; display: grid; }
   .form-row { grid-template-columns: 1fr; }
+  .main-nav { overflow-x: auto; }
+  .module-view { margin-top: 48px; }
+  .metric-grid, .report-grid { grid-template-columns: 1fr; }
 }

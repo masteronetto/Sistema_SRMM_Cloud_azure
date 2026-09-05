@@ -4,6 +4,8 @@ import helmet from 'helmet';
 import { env } from './config/env.js';
 import apiRoutes from './routes/api.routes.js';
 import maquinariaRoutes from './routes/maquinaria.routes.js';
+import reportesRoutes from './routes/reportes.routes.js';
+import mantenimientosRoutes from './routes/mantenimientos.routes.js';
 
 const app = express();
 
@@ -21,6 +23,8 @@ app.get('/health', (_req, res) => {
 
 app.use('/api', apiRoutes);
 app.use('/api/maquinaria', maquinariaRoutes);
+app.use('/api/reportes', reportesRoutes);
+app.use('/api/mantenimientos', mantenimientosRoutes);
 
 app.use((error, _req, res, _next) => {
   console.error(error);

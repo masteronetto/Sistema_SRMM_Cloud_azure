@@ -1,98 +1,35 @@
-import { useState } from 'react';
-import { useIsAuthenticated } from '@azure/msal-react';
-import AzureSession from './components/AzureSession';
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
+import AppLayout from './components/AppLayout';
+import AzureGate from './components/AzureGate';
+import HistorialMantenciones from './components/HistorialMantenciones';
 import MaquinariaDashboard from './components/MaquinariaDashboard';
-import { getCurrentUser } from './api/client';
+import ReportesDashboard from './components/ReportesDashboard';
+import HomePage from './pages/HomePage';
 
-const domains = [
-  { title: 'Maquinaria', description: 'Inventario, estados y horómetros.', status: 'Siguiente módulo' },
-  { title: 'Mantenimiento', description: 'Órdenes de trabajo e historial técnico.', status: 'Siguiente módulo' },
-  { title: 'Reportes', description: 'Indicadores operativos y actividad.', status: 'Siguiente módulo' }
-];
-
-function AuthenticatedActions() {
-  const isAuthenticated = useIsAuthenticated();
-  const [status, setStatus] = useState('');
-
-  async function checkBff() {
-    setStatus('Consultando identidad...');
-    try {
-      const user = await getCurrentUser();
-      setStatus(`Identidad validada: ${user.name || user.subject}`);
-    } catch (error) {
-      setStatus(error.response?.data?.message || 'El BFF aún no acepta esta identidad.');
-    }
-  }
-
-  if (!isAuthenticated) return null;
-
+function TenantUnavailable() {
   return (
-    <div className="identity-check">
-      <button className="button button-secondary" type="button" onClick={checkBff}>
-        Probar conexión segura
-      </button>
-      {status && <span>{status}</span>}
-    </div>
+    <section className="access-placeholder">
+      <p className="eyebrow">Módulo preparado</p>
+      <h1>Este módulo espera la configuración de Azure.</h1>
+      <p>La navegación y la interfaz ya están listas. La consulta de datos se habilitará al conectar Microsoft Entra ID.</p>
+    </section>
   );
 }
 
 export default function App({ azureConfigured }) {
-  const [activeView, setActiveView] = useState('home');
+  const protectedView = (element) => azureConfigured ? <AzureGate>{element}</AzureGate> : <TenantUnavailable />;
 
   return (
-    <main className="app-shell">
-      <header className="topbar">
-        <button className="brand brand-button" type="button" onClick={() => setActiveView('home')} aria-label="SRMM inicio">
-          <span className="brand-mark">S</span>
-          <span>SRMM <small>cloud base</small></span>
-        </button>
-        {azureConfigured && <AzureSession />}
-      </header>
-
-      {activeView === 'machinery' ? (
-        <>
-          <button className="back-button" type="button" onClick={() => setActiveView('home')}>← Volver al inicio</button>
-          <MaquinariaDashboard />
-        </>
-      ) : <>
-        <section className="hero">
-          <div>
-            <p className="eyebrow">Sistema de gestión operacional</p>
-            <h1>Una base limpia para construir el nuevo SRMM.</h1>
-            <p className="hero-copy">
-              Frontend React preparado para Microsoft Entra ID y un BFF separado. La identidad y la persistencia se conectarán cuando el tenant esté listo.
-            </p>
-            {azureConfigured ? (
-              <AuthenticatedActions />
-            ) : (
-              <div className="setup-note">
-                <strong>Tenant pendiente</strong>
-                <span>Configura las variables VITE_AZURE_* para habilitar el inicio de sesión.</span>
-              </div>
-            )}
-          </div>
-          <aside className="architecture-panel">
-            <span className="panel-label">Estado de la base</span>
-            <strong>React + MSAL + BFF</strong>
-            <div className="status-line"><i /> API desacoplada</div>
-            <div className="status-line"><i /> Tokens fuera del código</div>
-            <div className="status-line"><i /> Persistencia pendiente</div>
-          </aside>
-        </section>
-
-        <section className="domain-grid" aria-label="Módulos preparados">
-          {domains.map((domain) => (
-            <article className="domain-card" key={domain.title}>
-              <span className="card-index">0{domains.indexOf(domain) + 1}</span>
-              <h2>{domain.title}</h2>
-              <p>{domain.description}</p>
-              {domain.title === 'Maquinaria' ? (
-                <button className="card-status card-link" type="button" onClick={() => setActiveView('machinery')}>Abrir módulo</button>
-              ) : <span className="card-status">{domain.status}</span>}
-            </article>
-          ))}
-        </section>
-      </>}
-    </main>
+    <BrowserRouter>
+      <Routes>
+        <Route element={<AppLayout azureConfigured={azureConfigured} />}>
+          <Route index element={<HomePage azureConfigured={azureConfigured} />} />
+          <Route path="maquinaria" element={protectedView(<MaquinariaDashboard />)} />
+          <Route path="historial" element={protectedView(<HistorialMantenciones />)} />
+          <Route path="reportes" element={protectedView(<ReportesDashboard />)} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Route>
+      </Routes>
+    </BrowserRouter>
   );
 }
