@@ -3,12 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { getCurrentUser } from '../api/client';
 import { useState } from 'react';
 
-const domains = [
-  { path: '/maquinaria', title: 'Maquinaria', description: 'Inventario, estados y horómetros.', status: 'Módulo migrado' },
-  { path: '/historial', title: 'Historial', description: 'Mantenciones y registros técnicos.', status: 'Módulo migrado' },
-  { path: '/reportes', title: 'Reportes', description: 'Indicadores operativos y actividad.', status: 'Módulo migrado' }
-];
-
 export default function HomePage({ azureConfigured }) {
   const navigate = useNavigate();
   const [status, setStatus] = useState('');
@@ -23,26 +17,38 @@ export default function HomePage({ azureConfigured }) {
     }
   }
 
+  const demoAlerts = [
+    ['⌛', 'Prueba — Mantenimiento retrasado', '1 día(s) de retraso · Mecánico: rou · Programada: 09-06-2026'],
+    ['⌛', 'Prueba 2 — Mantenimiento retrasado', '2 día(s) de retraso · Mecánico: rou · Programada: 08-06-2026'],
+    ['△', 'Prueba 4 — Mantenimiento urgente', 'Umbral superado en 50.01 hrs'],
+    ['△', 'Prueba 2 — Mantenimiento urgente', 'Umbral superado en 50 hrs'],
+    ['△', 'Prueba 3 — Mantenimiento urgente', 'Umbral superado en 1 hrs']
+  ];
+
   return (
-    <>
-      <section className="hero">
-        <div>
-          <p className="eyebrow">Sistema de gestión operacional</p>
-          <h1>Una base limpia para construir el nuevo SRMM.</h1>
-          <p className="hero-copy">Frontend React preparado para Microsoft Entra ID y un BFF separado. La identidad y la persistencia se conectarán cuando el tenant esté listo.</p>
-          {azureConfigured ? (
-            <AuthenticatedHomeActions checkBff={checkBff} status={status} />
-          ) : (
-            <div className="setup-note"><strong>{azureConfigured ? 'Sesión pendiente' : 'Tenant pendiente'}</strong><span>{azureConfigured ? 'Inicia sesión para probar los módulos.' : 'Configura las variables VITE_AZURE_* para habilitar el inicio de sesión.'}</span></div>
-          )}
-        </div>
-        <aside className="architecture-panel"><span className="panel-label">Estado de la base</span><strong>React + MSAL + BFF</strong><div className="status-line"><i /> API desacoplada</div><div className="status-line"><i /> Tokens fuera del código</div><div className="status-line"><i /> Persistencia pendiente</div></aside>
+    <div className="dashboard-home">
+      <section className="welcome-panel"><div><h2>Bienvenido al Sistema SRMM</h2><p>Sesión activa como: <strong>Admin Inicial</strong> · admin@srmm.cl</p></div>{azureConfigured ? <AuthenticatedHomeActions checkBff={checkBff} status={status} /> : <span className="demo-label">Vista previa local</span>}</section>
+      <section className="metric-grid dashboard-metrics">
+        <MetricCard label="Total maquinaria" value="8" detail="5 categorías de estado" tone="blue" />
+        <MetricCard label="Disponibles" value="1" detail="Listas para uso" tone="green" />
+        <MetricCard label="En arriendo" value="2" detail="Activos hoy" tone="orange" />
+        <MetricCard label="Mantenimiento urgente" value="3" detail="Acción requerida" tone="red" />
       </section>
-      <section className="domain-grid" aria-label="Módulos preparados">
-        {domains.map((domain, index) => <article className="domain-card" key={domain.title}><span className="card-index">0{index + 1}</span><h2>{domain.title}</h2><p>{domain.description}</p><button className="card-status card-link" type="button" onClick={() => navigate(domain.path)}>{domain.status}</button></article>)}
+      <section className="dashboard-grid">
+        <article className="dashboard-card alerts-card"><h2>Alertas críticas</h2><div className="alert-list">{demoAlerts.map(([icon, title, detail]) => <div className="critical-alert" key={title}><span className="critical-icon">{icon}</span><div><strong>{title}</strong><span>{detail}</span></div></div>)}</div></article>
+        <article className="dashboard-card park-card"><h2>Estado del parque</h2><ParkRow label="Disponibles" value="1" percent="13%" width="13%" /><ParkRow label="En arriendo" value="2" percent="25%" width="25%" /><ParkRow label="Mantenimiento" value="2" percent="25%" width="25%" /><div className="demo-chart"><div className="chart-y-axis"><span>45.000</span><span>30.000</span><span>15.000</span><span>0</span></div><div className="chart-bars"><i style={{ height: '82%' }} /><i style={{ height: '7%' }} /><i style={{ height: '3%' }} /><i style={{ height: '5%' }} /><i style={{ height: '2%' }} /></div></div><div className="chart-labels"><span>Prueba</span><span>CAT 320D</span><span>Retroexcavadora JCB 3CX</span><span>Prueba 4</span><span>Prueba 2</span></div></article>
       </section>
-    </>
+      {!azureConfigured && <div className="preview-note">Los indicadores mostrados son datos de demostración para revisar el diseño. La conexión real se activará al configurar Microsoft Entra ID y el BFF.</div>}
+    </div>
   );
+}
+
+function MetricCard({ label, value, detail, tone }) {
+  return <article className="metric-card"><span>{label}</span><strong className={`metric-${tone}`}>{value}</strong><small>{detail}</small></article>;
+}
+
+function ParkRow({ label, value, percent, width }) {
+  return <div className="park-row"><span>{label}</span><div><i style={{ width }} /></div><strong>{value} <small>({percent})</small></strong></div>;
 }
 
 function AuthenticatedHomeActions({ checkBff, status }) {
