@@ -2,6 +2,7 @@ import { useIsAuthenticated } from '@azure/msal-react';
 import { useNavigate } from 'react-router-dom';
 import { getCurrentUser } from '../api/client';
 import { useState } from 'react';
+import { useMsal } from '@azure/msal-react';
 
 export default function HomePage({ azureConfigured }) {
   const navigate = useNavigate();
@@ -29,7 +30,7 @@ export default function HomePage({ azureConfigured }) {
 
   return (
     <div className="dashboard-home">
-      <section className="welcome-panel"><div><h2>Bienvenido al Sistema SRMM</h2><p>Sesión activa como: <strong>Admin Inicial</strong> · admin@srmm.cl</p></div>{azureConfigured ? <AuthenticatedHomeActions checkBff={checkBff} status={status} /> : <span className="demo-label">Vista previa local</span>}</section>
+      <section className="welcome-panel"><WelcomeIdentity azureConfigured={azureConfigured} />{azureConfigured ? <AuthenticatedHomeActions checkBff={checkBff} status={status} /> : <span className="demo-label">Vista previa local</span>}</section>
       <section className="metric-grid dashboard-metrics">
         <MetricCard label="Total maquinaria" value="8" detail="5 categorías de estado" tone="blue" />
         <MetricCard label="Disponibles" value="1" detail="Listas para uso" tone="green" />
@@ -43,6 +44,20 @@ export default function HomePage({ azureConfigured }) {
       {!azureConfigured && <div className="preview-note">Los indicadores mostrados son datos de demostración para revisar el diseño. La conexión real se activará al configurar Microsoft Entra ID y el BFF.</div>}
     </div>
   );
+}
+
+function WelcomeIdentity({ azureConfigured }) {
+  if (!azureConfigured) {
+    return <div><h2>Bienvenido al Sistema SRMM</h2><p>Sesión activa como: <strong>Admin Inicial</strong> · admin@srmm.cl</p></div>;
+  }
+
+  return <WelcomeAccount />;
+}
+
+function WelcomeAccount() {
+  const { accounts } = useMsal();
+  const account = accounts[0];
+  return <div><h2>Bienvenido al Sistema SRMM</h2><p>Sesión activa como: <strong>{account?.name || 'Usuario'}</strong> · {account?.username || 'Cuenta Microsoft'}</p></div>;
 }
 
 function MetricCard({ label, value, detail, tone }) {

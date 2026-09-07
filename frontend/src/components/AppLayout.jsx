@@ -1,5 +1,19 @@
 import { NavLink, Outlet } from 'react-router-dom';
+import { useMsal } from '@azure/msal-react';
 import AzureSession from './AzureSession';
+
+function SessionProfile() {
+  const { accounts } = useMsal();
+  const account = accounts[0];
+  const role = account?.idTokenClaims?.roles?.[0] || account?.idTokenClaims?.rol_acceso || 'Usuario';
+
+  return (
+    <>
+      <div className="user-avatar">{(account?.name || 'U').slice(0, 2).toUpperCase()}</div>
+      <div className="user-copy"><strong>{account?.name || 'Usuario'}</strong><span>{account?.username || 'Cuenta Microsoft'}</span><em>{role}</em></div>
+    </>
+  );
+}
 
 export default function AppLayout({ azureConfigured }) {
   const linkClass = ({ isActive }) => `nav-link${isActive ? ' nav-link-active' : ''}`;
@@ -22,8 +36,7 @@ export default function AppLayout({ azureConfigured }) {
           <span className="nav-link nav-disabled"><span className="nav-icon">●</span>Usuarios</span>
         </nav>
         <div className="sidebar-user">
-          <div className="user-avatar">AI</div>
-          <div className="user-copy"><strong>Admin Inicial</strong><span>admin@srmm.cl</span><em>Administrador</em></div>
+          {azureConfigured ? <SessionProfile /> : <><div className="user-avatar">AI</div><div className="user-copy"><strong>Admin Inicial</strong><span>admin@srmm.cl</span><em>Vista previa</em></div></>}
           {azureConfigured && <AzureSession />}
         </div>
       </aside>
