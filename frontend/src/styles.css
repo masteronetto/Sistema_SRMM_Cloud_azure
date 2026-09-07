@@ -115,7 +115,7 @@ body { overflow-x: hidden; background: #f3eee9; }
 .nav-link-active { border-left-color: #e8d2b1; color: #fff; background: #766d66; }
 .nav-icon { display: inline-grid; place-items: center; width: 13px; color: #f2eeea; font-size: .8rem; }
 .nav-disabled { opacity: .9; cursor: default; }
-.sidebar-user { display: flex; align-items: flex-start; gap: 8px; margin-top: auto; padding: 12px; border-top: 1px solid rgba(255,255,255,.14); }
+.sidebar-user { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 8px; margin-top: auto; padding: 12px; border-top: 1px solid rgba(255,255,255,.14); }
 .user-avatar { display: grid; flex: 0 0 32px; place-items: center; width: 32px; height: 32px; border-radius: 50%; color: #756b63; background: #f0ece6; font-size: .72rem; font-weight: 800; }
 .user-copy { display: flex; min-width: 0; flex-direction: column; gap: 2px; font-size: .66rem; }
 .user-copy strong { color: #fff; }
@@ -124,7 +124,7 @@ body { overflow-x: hidden; background: #f3eee9; }
 .sidebar .session-controls { position: absolute; right: 10px; bottom: 9px; left: 52px; display: block; }
 .sidebar .session-user { display: none; }
 .sidebar .button-quiet { padding: 5px 8px; color: #f4a095; background: rgba(210,83,72,.25); font-size: .6rem; }
-.sidebar-login-button { width: 100%; margin: 5px 0 0; padding: 7px 5px; border-radius: 4px; font-size: .64rem; line-height: 1.2; }
+.sidebar-login-button { flex: 0 0 calc(100% - 40px); width: calc(100% - 40px); margin: 5px 0 0 40px; padding: 7px 5px; border-radius: 4px; font-size: .64rem; line-height: 1.2; }
 .workspace { width: 100%; min-width: 0; margin-left: 191px; }
 .topbar { display: flex; align-items: center; justify-content: space-between; min-height: 54px; max-width: none; margin: 0; padding: 0 20px; border-bottom: 1px solid #e8e0d9; background: #faf8f6; }
 .page-title { margin: 0; color: #26211e; font-size: 1.1rem; letter-spacing: 0; }

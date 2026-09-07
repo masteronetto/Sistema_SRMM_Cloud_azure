@@ -43,6 +43,13 @@ export async function requireAzureToken(req, res, next) {
       issuer,
       audience: env.azureAudience
     });
-    return res.status(401).json({ message: 'Token Azure AD invalido o expirado.' });
+    return res.status(401).json({
+      message: 'Token Azure AD invalido o expirado.',
+      ...(process.env.NODE_ENV !== 'production' ? {
+        diagnostic: error.code || error.message,
+        expectedIssuer: issuer,
+        expectedAudience: env.azureAudience
+      } : {})
+    });
   }
 }
