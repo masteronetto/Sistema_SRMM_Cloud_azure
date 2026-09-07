@@ -14,7 +14,7 @@ export default function AzureSession() {
 
   if (!isAuthenticated) {
     return (
-      <button className="button button-primary" type="button" onClick={() => instance.loginRedirect(loginRequest)}>
+      <button className="button button-primary sidebar-login-button" type="button" onClick={() => instance.loginRedirect(loginRequest)}>
         Iniciar sesión con Microsoft
       </button>
     );

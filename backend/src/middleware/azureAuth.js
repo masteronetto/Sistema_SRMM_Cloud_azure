@@ -37,7 +37,12 @@ export async function requireAzureToken(req, res, next) {
     req.auth = payload;
     return next();
   } catch (error) {
-    console.error('Azure token validation failed:', error.code || error.message);
+    console.error('Azure token validation failed:', {
+      code: error.code || 'unknown',
+      message: error.message,
+      issuer,
+      audience: env.azureAudience
+    });
     return res.status(401).json({ message: 'Token Azure AD invalido o expirado.' });
   }
 }
