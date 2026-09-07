@@ -1,15 +1,21 @@
 import { createRemoteJWKSet, decodeJwt, jwtVerify } from 'jose';
 import { env } from '../config/env.js';
 
-const issuer = env.azureTenantId
+const v2Issuer = env.azureTenantId
   ? `https://login.microsoftonline.com/${env.azureTenantId}/v2.0`
   : '';
-const jwks = issuer
-  ? createRemoteJWKSet(new URL(`${issuer}/discovery/v2.0/keys`))
+const v1Issuer = env.azureTenantId
+  ? `https://sts.windows.net/${env.azureTenantId}/`
+  : '';
+const v2Jwks = v2Issuer
+  ? createRemoteJWKSet(new URL(`https://login.microsoftonline.com/${env.azureTenantId}/discovery/v2.0/keys`))
+  : null;
+const v1Jwks = v1Issuer
+  ? createRemoteJWKSet(new URL(`https://login.microsoftonline.com/${env.azureTenantId}/discovery/keys`))
   : null;
 
 export async function requireAzureToken(req, res, next) {
-  if (!env.azureAuthEnabled || !jwks) {
+  if (!env.azureAuthEnabled || !v1Jwks || !v2Jwks) {
     return res.status(503).json({
       message: 'Autenticacion Azure AD aun no configurada para este entorno.'
     });
@@ -22,8 +28,12 @@ export async function requireAzureToken(req, res, next) {
 
   try {
     const token = authorization.slice('Bearer '.length).trim();
-    const { payload } = await jwtVerify(token, jwks, {
-      issuer,
+    const unverified = decodeJwt(token);
+    const isV1Token = unverified.iss === v1Issuer;
+    const expectedIssuer = isV1Token ? v1Issuer : v2Issuer;
+    const expectedJwks = isV1Token ? v1Jwks : v2Jwks;
+    const { payload } = await jwtVerify(token, expectedJwks, {
+      issuer: expectedIssuer,
       audience: env.azureAudience
     });
 
@@ -54,7 +64,8 @@ export async function requireAzureToken(req, res, next) {
     console.error('Azure token validation failed:', {
       code: error.code || 'unknown',
       message: error.message,
-      issuer,
+      issuer: v2Issuer,
+      v1Issuer,
       audience: env.azureAudience,
       unverifiedClaims
     });
@@ -63,7 +74,7 @@ export async function requireAzureToken(req, res, next) {
       ...(process.env.NODE_ENV !== 'production' ? {
         diagnostic: error.code || error.message,
         diagnosticMessage: error.message,
-        expectedIssuer: issuer,
+        expectedIssuer: `${v1Issuer} or ${v2Issuer}`,
         expectedAudience: env.azureAudience,
         unverifiedClaims
       } : {})

@@ -9,5 +9,6 @@ export const env = {
   azureAuthEnabled: process.env.AZURE_AUTH_ENABLED === 'true' && azureValuesPresent,
   azureTenantId: process.env.AZURE_TENANT_ID || '',
   azureAudience: process.env.AZURE_API_AUDIENCE || '',
+  azureApiClientId: process.env.AZURE_API_CLIENT_ID || '',
   azureRequiredScope: process.env.AZURE_REQUIRED_SCOPE || ''
 };
