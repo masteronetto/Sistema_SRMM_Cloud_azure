@@ -14,7 +14,8 @@ export default function HomePage({ azureConfigured }) {
       setStatus(`Identidad validada: ${user.name || user.subject}`);
     } catch (error) {
       const payload = error.response?.data;
-      setStatus(payload?.diagnostic ? `${payload.message} (${payload.diagnostic})` : payload?.message || 'El BFF aún no acepta esta identidad.');
+      const diagnostic = payload?.diagnosticMessage || payload?.diagnostic;
+      setStatus(diagnostic ? `${payload.message} (${payload.diagnostic}: ${diagnostic})` : payload?.message || 'El BFF aún no acepta esta identidad.');
     }
   }
 

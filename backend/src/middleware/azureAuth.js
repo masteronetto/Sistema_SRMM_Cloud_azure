@@ -1,4 +1,4 @@
-import { createRemoteJWKSet, jwtVerify } from 'jose';
+import { createRemoteJWKSet, decodeJwt, jwtVerify } from 'jose';
 import { env } from '../config/env.js';
 
 const issuer = env.azureTenantId
@@ -37,18 +37,35 @@ export async function requireAzureToken(req, res, next) {
     req.auth = payload;
     return next();
   } catch (error) {
+    const rawToken = authorization.slice('Bearer '.length).trim();
+    let unverifiedClaims = null;
+    try {
+      const decoded = decodeJwt(rawToken);
+      unverifiedClaims = {
+        issuer: decoded.iss || null,
+        audience: decoded.aud || null,
+        scopes: decoded.scp || null,
+        expiresAt: decoded.exp || null
+      };
+    } catch {
+      unverifiedClaims = { tokenShape: rawToken.split('.').length };
+    }
+
     console.error('Azure token validation failed:', {
       code: error.code || 'unknown',
       message: error.message,
       issuer,
-      audience: env.azureAudience
+      audience: env.azureAudience,
+      unverifiedClaims
     });
     return res.status(401).json({
       message: 'Token Azure AD invalido o expirado.',
       ...(process.env.NODE_ENV !== 'production' ? {
         diagnostic: error.code || error.message,
+        diagnosticMessage: error.message,
         expectedIssuer: issuer,
-        expectedAudience: env.azureAudience
+        expectedAudience: env.azureAudience,
+        unverifiedClaims
       } : {})
     });
   }
