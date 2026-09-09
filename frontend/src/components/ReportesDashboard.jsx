@@ -1,11 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
-import { useIsAuthenticated, useMsal } from '@azure/msal-react';
+import { useIsAuthenticated } from '@azure/msal-react';
 import Chart from 'chart.js/auto';
 import { downloadReport, getReportData } from '../api/reportes';
-
-function getRole(account) {
-  return account?.idTokenClaims?.roles?.[0] || account?.idTokenClaims?.rol_acceso || '';
-}
+import { useIdentity } from '../auth/IdentityContext';
 
 function formatNumber(value, suffix = '') {
   const numeric = Number(value || 0);
@@ -17,9 +14,9 @@ function formatCurrency(value) {
 }
 
 export default function ReportesDashboard() {
-  const { accounts } = useMsal();
+  const { profile } = useIdentity();
   const isAuthenticated = useIsAuthenticated();
-  const role = getRole(accounts[0]);
+  const role = profile?.roles?.[0] || '';
   const isAdmin = ['Administrador', 'Admin'].includes(role);
   const chartRef = useRef(null);
   const chartInstance = useRef(null);

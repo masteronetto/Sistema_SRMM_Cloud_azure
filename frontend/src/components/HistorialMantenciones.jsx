@@ -1,10 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useIsAuthenticated, useMsal } from '@azure/msal-react';
+import { useIsAuthenticated } from '@azure/msal-react';
 import { downloadMaintenanceHistory, getMaintenanceHistory, getServiceTypes } from '../api/mantenimientos';
-
-function getRole(account) {
-  return account?.idTokenClaims?.roles?.[0] || account?.idTokenClaims?.rol_acceso || '';
-}
+import { useIdentity } from '../auth/IdentityContext';
 
 function downloadBlob(response, fallbackName) {
   const disposition = response.headers['content-disposition'] || '';
@@ -18,9 +15,9 @@ function downloadBlob(response, fallbackName) {
 }
 
 export default function HistorialMantenciones() {
-  const { accounts } = useMsal();
+  const { profile } = useIdentity();
   const isAuthenticated = useIsAuthenticated();
-  const role = getRole(accounts[0]);
+  const role = profile?.roles?.[0] || '';
   const canGenerateReport = ['Administrador', 'Mecanico', 'Operador', 'Admin'].includes(role);
   const [machineId, setMachineId] = useState('');
   const [rows, setRows] = useState([]);

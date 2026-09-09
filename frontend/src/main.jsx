@@ -3,13 +3,14 @@ import { createRoot } from 'react-dom/client';
 import { MsalProvider } from '@azure/msal-react';
 import App from './App';
 import { isAzureConfigured, msalInstance } from './auth/msalConfig';
+import { IdentityProvider } from './auth/IdentityContext';
 import './styles.css';
 
 const root = createRoot(document.getElementById('root'));
 
 function renderApp() {
   const app = <App azureConfigured={isAzureConfigured} />;
-  root.render(<StrictMode>{isAzureConfigured ? <MsalProvider instance={msalInstance}>{app}</MsalProvider> : app}</StrictMode>);
+  root.render(<StrictMode>{isAzureConfigured ? <MsalProvider instance={msalInstance}><IdentityProvider>{app}</IdentityProvider></MsalProvider> : app}</StrictMode>);
 }
 
 if (msalInstance) {

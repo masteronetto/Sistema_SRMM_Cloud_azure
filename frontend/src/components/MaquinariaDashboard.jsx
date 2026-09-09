@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useIsAuthenticated, useMsal } from '@azure/msal-react';
+import { useIsAuthenticated } from '@azure/msal-react';
 import { createMaquinaria, listMaquinaria, updateMaquinaria } from '../api/maquinaria';
+import { useIdentity } from '../auth/IdentityContext';
 
 const initialForm = {
   modelo_equipo: '',
@@ -23,16 +24,10 @@ function formatNumber(value) {
   return Number.isFinite(numeric) ? numeric.toLocaleString('es-CL') : '0';
 }
 
-function getRole(account) {
-  const claims = account?.idTokenClaims || {};
-  return claims.roles?.[0] || claims.rol_acceso || '';
-}
-
 export default function MaquinariaDashboard() {
-  const { accounts } = useMsal();
+  const { profile } = useIdentity();
   const isAuthenticated = useIsAuthenticated();
-  const account = accounts[0];
-  const currentRole = getRole(account);
+  const currentRole = profile?.roles?.[0] || '';
   const isAdmin = useMemo(() => ['Administrador', 'Admin'].includes(currentRole), [currentRole]);
   const [maquinaria, setMaquinaria] = useState([]);
   const [loading, setLoading] = useState(false);

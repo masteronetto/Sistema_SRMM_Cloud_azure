@@ -5,6 +5,7 @@ import HistorialMantenciones from './components/HistorialMantenciones';
 import MaquinariaDashboard from './components/MaquinariaDashboard';
 import ReportesDashboard from './components/ReportesDashboard';
 import HomePage from './pages/HomePage';
+import { useIdentity } from './auth/IdentityContext';
 
 function TenantUnavailable() {
   return (
@@ -16,8 +17,20 @@ function TenantUnavailable() {
   );
 }
 
+function NoRoleAssigned() {
+  const { account } = useIdentity();
+  return <section className="access-placeholder"><p className="eyebrow">Acceso pendiente</p><h1>No tienes un rol asignado.</h1><p>{account?.username || 'Tu cuenta Microsoft'} está autenticada, pero un administrador debe asignarte un App Role en SRMM BFF API.</p></section>;
+}
+
+function ProtectedView({ children }) {
+  const { profile, loading } = useIdentity();
+  if (loading) return <section className="access-placeholder"><p className="eyebrow">Validando permisos</p><h1>Cargando tu perfil...</h1></section>;
+  if (!profile?.roles?.length) return <NoRoleAssigned />;
+  return <AzureGate>{children}</AzureGate>;
+}
+
 export default function App({ azureConfigured }) {
-  const protectedView = (element) => azureConfigured ? <AzureGate>{element}</AzureGate> : <TenantUnavailable />;
+  const protectedView = (element) => azureConfigured ? <ProtectedView>{element}</ProtectedView> : <TenantUnavailable />;
 
   return (
     <BrowserRouter>

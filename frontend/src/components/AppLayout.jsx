@@ -1,16 +1,15 @@
 import { NavLink, Outlet } from 'react-router-dom';
-import { useMsal } from '@azure/msal-react';
 import AzureSession from './AzureSession';
+import { useIdentity } from '../auth/IdentityContext';
 
 function SessionProfile() {
-  const { accounts } = useMsal();
-  const account = accounts[0];
-  const role = account?.idTokenClaims?.roles?.[0] || account?.idTokenClaims?.rol_acceso || 'Usuario';
+  const { account, profile } = useIdentity();
+  const role = profile?.roles?.[0] || '';
 
   return (
     <>
       <div className="user-avatar">{(account?.name || 'U').slice(0, 2).toUpperCase()}</div>
-      <div className="user-copy"><strong>{account?.name || 'Usuario'}</strong><span>{account?.username || 'Cuenta Microsoft'}</span><em>{role}</em></div>
+      <div className="user-copy"><strong>{account?.name || 'Usuario'}</strong><span>{account?.username || 'Cuenta Microsoft'}</span><em className={role ? '' : 'role-missing'}>{role || 'Sin rol asignado'}</em></div>
     </>
   );
 }

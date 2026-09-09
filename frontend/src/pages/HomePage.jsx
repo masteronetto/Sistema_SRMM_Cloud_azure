@@ -3,10 +3,16 @@ import { useNavigate } from 'react-router-dom';
 import { getCurrentUser } from '../api/client';
 import { useState } from 'react';
 import { useMsal } from '@azure/msal-react';
+import { useIdentity } from '../auth/IdentityContext';
 
 export default function HomePage({ azureConfigured }) {
   const navigate = useNavigate();
+  const { profile, loading } = useIdentity();
   const [status, setStatus] = useState('');
+
+  if (azureConfigured && !loading && profile && !profile.roles?.length) {
+    return <section className="access-placeholder"><p className="eyebrow">Acceso pendiente</p><h1>No tienes un rol asignado.</h1><p>Tu cuenta está autenticada, pero no puede acceder al dashboard hasta que un administrador le asigne un App Role.</p></section>;
+  }
 
   async function checkBff() {
     setStatus('Consultando identidad...');
