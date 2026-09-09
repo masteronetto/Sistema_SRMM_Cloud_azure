@@ -54,7 +54,7 @@ export default function ReportesDashboard() {
       .then((incomePayload) => {
         if (incomePayload) setIncome(Array.isArray(incomePayload.by_maquina) ? incomePayload.by_maquina : []);
       })
-      .catch((error) => setStatus(error.response?.data?.message || 'El BFF aún no expone reportes.'))
+      .catch((error) => setStatus(error.userMessage || error.response?.data?.message || 'El BFF aún no expone reportes.'))
       .finally(() => setLoading(false));
     return undefined;
   }, [isAuthenticated, isAdmin]);
@@ -86,7 +86,7 @@ export default function ReportesDashboard() {
       link.click();
       URL.revokeObjectURL(url);
     } catch (error) {
-      setStatus(error.response?.data?.message || 'No se pudo descargar el CSV.');
+      setStatus(error.userMessage || error.response?.data?.message || 'No se pudo descargar el CSV.');
     }
   }
 

@@ -81,3 +81,16 @@ export async function requireAzureToken(req, res, next) {
     });
   }
 }
+
+export function requireAnyRole(...allowedRoles) {
+  return (req, res, next) => {
+    const roles = Array.isArray(req.auth?.roles) ? req.auth.roles : [];
+    if (!allowedRoles.some((role) => roles.includes(role))) {
+      return res.status(403).json({
+        message: 'No tienes un rol de aplicación suficiente para esta operación.',
+        requiredRoles: allowedRoles
+      });
+    }
+    return next();
+  };
+}

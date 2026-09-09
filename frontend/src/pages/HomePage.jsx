@@ -16,7 +16,7 @@ export default function HomePage({ azureConfigured }) {
     } catch (error) {
       const payload = error.response?.data;
       const diagnostic = payload?.diagnosticMessage || payload?.diagnostic;
-      setStatus(diagnostic ? `${payload.message} (${payload.diagnostic}: ${diagnostic})` : payload?.message || 'El BFF aún no acepta esta identidad.');
+      setStatus(diagnostic ? `${payload.message} (${payload.diagnostic}: ${diagnostic})` : error.userMessage || payload?.message || 'El BFF aún no acepta esta identidad.');
     }
   }
 

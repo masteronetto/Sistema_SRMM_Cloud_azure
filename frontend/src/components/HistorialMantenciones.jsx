@@ -56,7 +56,7 @@ export default function HistorialMantenciones() {
         setRows(Array.isArray(payload.data) ? payload.data : []);
         setTotal(Number(payload.total || payload.cantidad || 0));
       })
-      .catch((error) => setStatus(error.response?.data?.message || 'El BFF aún no expone el historial.'))
+      .catch((error) => setStatus(error.userMessage || error.response?.data?.message || 'El BFF aún no expone el historial.'))
       .finally(() => setLoading(false));
   }, [isAuthenticated, machineId, query]);
 
@@ -73,7 +73,7 @@ export default function HistorialMantenciones() {
       const response = await downloadMaintenanceHistory(machineId, { ...query, format: 'csv' });
       downloadBlob(response, `historial_mantenciones_${machineId}.csv`);
     } catch (error) {
-      setStatus(error.response?.data?.message || 'No se pudo generar el CSV.');
+      setStatus(error.userMessage || error.response?.data?.message || 'No se pudo generar el CSV.');
     } finally {
       setReporting(false);
     }

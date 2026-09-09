@@ -52,7 +52,7 @@ export default function MaquinariaDashboard() {
     try {
       setMaquinaria(await listMaquinaria());
     } catch (error) {
-      setStatus(error.response?.data?.message || 'El BFF aún no expone maquinaria.');
+      setStatus(error.userMessage || error.response?.data?.message || 'El BFF aún no expone maquinaria.');
     } finally {
       setLoading(false);
     }
@@ -114,7 +114,7 @@ export default function MaquinariaDashboard() {
       await loadMaquinaria();
       if (formMode === 'create') resetForm();
     } catch (error) {
-      setStatus(error.response?.data?.message || 'No se pudo guardar la maquinaria.');
+      setStatus(error.userMessage || error.response?.data?.message || 'No se pudo guardar la maquinaria.');
     }
   }
 

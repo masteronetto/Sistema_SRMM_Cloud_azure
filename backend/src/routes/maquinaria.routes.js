@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { requireAzureToken } from '../middleware/azureAuth.js';
+import { requireAnyRole, requireAzureToken } from '../middleware/azureAuth.js';
 
 const router = Router();
 
@@ -11,7 +11,7 @@ function notImplemented(_req, res) {
 
 router.use(requireAzureToken);
 router.get('/', notImplemented);
-router.post('/', notImplemented);
-router.put('/:id', notImplemented);
+router.post('/', requireAnyRole('Administrador'), notImplemented);
+router.put('/:id', requireAnyRole('Administrador'), notImplemented);
 
 export default router;

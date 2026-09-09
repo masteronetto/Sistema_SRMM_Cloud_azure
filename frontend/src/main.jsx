@@ -13,7 +13,11 @@ function renderApp() {
 }
 
 if (msalInstance) {
-  msalInstance.initialize().then(renderApp).catch((error) => {
+  msalInstance.initialize().then(() => msalInstance.handleRedirectPromise()).then((result) => {
+    const account = result?.account || msalInstance.getAllAccounts()[0];
+    if (account) msalInstance.setActiveAccount(account);
+    renderApp();
+  }).catch((error) => {
     console.error('No se pudo inicializar MSAL:', error);
     renderApp();
   });
