@@ -1,17 +1,12 @@
 import { Router } from 'express';
 import { requireAnyRole, requireAzureToken } from '../middleware/azureAuth.js';
+import * as controller from '../domains/maquinaria/maquinaria.controller.js';
 
 const router = Router();
 
-function notImplemented(_req, res) {
-  return res.status(501).json({
-    message: 'El contrato de maquinaria esta definido, pero el repositorio cloud aun no esta conectado.'
-  });
-}
-
 router.use(requireAzureToken);
-router.get('/', notImplemented);
-router.post('/', requireAnyRole('Administrador'), notImplemented);
-router.put('/:id', requireAnyRole('Administrador'), notImplemented);
+router.get('/', controller.listar);
+router.post('/', requireAnyRole('Administrador'), controller.crear);
+router.put('/:id', requireAnyRole('Administrador'), controller.actualizar);
 
 export default router;

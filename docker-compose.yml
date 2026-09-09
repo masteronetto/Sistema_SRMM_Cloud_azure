@@ -7,13 +7,12 @@ services:
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-local_dev_only}
-      POSTGRES_DB: ${POSTGRES_DB:-srmm}
+      POSTGRES_DB: ${POSTGRES_DB:-srmm_cloud}
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./sql/001_base_crud_usuarios.sql:/docker-entrypoint-initdb.d/01-create-tables.sql
-      - ./sql/vistas_reportes.sql:/docker-entrypoint-initdb.d/02-create-views.sql
+      - ./sql/010_cloud_native_base.sql:/docker-entrypoint-initdb.d/01-cloud-native-base.sql
     networks:
       - srmm-network
     healthcheck:

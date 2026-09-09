@@ -28,7 +28,10 @@ app.use('/api/mantenimientos', mantenimientosRoutes);
 
 app.use((error, _req, res, _next) => {
   console.error(error);
-  res.status(500).json({ message: 'Error interno del BFF.' });
+  res.status(error.statusCode || 500).json({
+    message: error.statusCode ? error.message : 'Error interno del BFF.',
+    ...(error.details ? { details: error.details } : {})
+  });
 });
 
 app.listen(env.port, () => {
