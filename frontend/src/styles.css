@@ -201,3 +201,18 @@ body { overflow-x: hidden; background: #f3eee9; }
   .welcome-panel { align-items: flex-start; flex-direction: column; gap: 10px; }
   .dashboard-grid { grid-template-columns: 1fr; }
 }
+
+/* Final palette overrides matching public/css/styles.css. */
+:root { color: #201915; background: #f5efe8; }
+body { background: radial-gradient(circle at top right, rgba(109,81,65,.08), transparent 22%), linear-gradient(180deg,#faf6f2 0%,#f3ede6 100%); }
+.button-primary, .button-secondary { color: #fff; background: #6d5141; }
+.button-quiet { color: #4d372d; background: #e8e1da; }
+.metric-green { color: #27ae60 !important; }
+.metric-orange { color: #e67e22 !important; }
+.metric-red { color: #c0392b !important; }
+.critical-alert { background: #f8c8c2; }
+.empty-dashboard-state { display: grid; min-height: 170px; place-items: center; padding: 20px; color: #7a6c62; background: #faf7f4; font-size: .76rem; text-align: center; }
+.topbar { min-height: 70px; background: rgba(255,255,255,.75); backdrop-filter: blur(8px); border-bottom-color: #e9ddd3; }
+.period-buttons button, .date-control, .range-pill, .alert-button { border-color: #e9ddd3; }
+.alert-button { background: #ddd8d3; }
+.welcome-panel, .dashboard-card, .metric-card { border-color: #e9ddd3; }

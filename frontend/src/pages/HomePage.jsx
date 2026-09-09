@@ -1,14 +1,33 @@
 import { useIsAuthenticated } from '@azure/msal-react';
 import { useNavigate } from 'react-router-dom';
 import { getCurrentUser } from '../api/client';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useMsal } from '@azure/msal-react';
 import { useIdentity } from '../auth/IdentityContext';
+import { getReportData } from '../api/reportes';
 
 export default function HomePage({ azureConfigured }) {
   const navigate = useNavigate();
   const { profile, loading } = useIdentity();
   const [status, setStatus] = useState('');
+  const [dashboardData, setDashboardData] = useState({ stats: [], machines: [], loaded: false });
+
+  useEffect(() => {
+    if (!azureConfigured || loading || !profile?.roles?.length) return undefined;
+    let active = true;
+    Promise.allSettled([
+      getReportData('/reportes/estadisticas'),
+      getReportData('/reportes/top-maquinas')
+    ]).then(([statsResult, machinesResult]) => {
+      if (!active) return;
+      setDashboardData({
+        stats: statsResult.status === 'fulfilled' && Array.isArray(statsResult.value) ? statsResult.value : [],
+        machines: machinesResult.status === 'fulfilled' && Array.isArray(machinesResult.value) ? machinesResult.value : [],
+        loaded: true
+      });
+    });
+    return () => { active = false; };
+  }, [azureConfigured, loading, profile]);
 
   if (azureConfigured && !loading && profile && !profile.roles?.length) {
     return <section className="access-placeholder"><p className="eyebrow">Acceso pendiente</p><h1>No tienes un rol asignado.</h1><p>Tu cuenta está autenticada, pero no puede acceder al dashboard hasta que un administrador le asigne un App Role.</p></section>;
@@ -26,35 +45,33 @@ export default function HomePage({ azureConfigured }) {
     }
   }
 
-  const demoAlerts = [
-    ['⌛', 'Prueba — Mantenimiento retrasado', '1 día(s) de retraso · Mecánico: rou · Programada: 09-06-2026'],
-    ['⌛', 'Prueba 2 — Mantenimiento retrasado', '2 día(s) de retraso · Mecánico: rou · Programada: 08-06-2026'],
-    ['△', 'Prueba 4 — Mantenimiento urgente', 'Umbral superado en 50.01 hrs'],
-    ['△', 'Prueba 2 — Mantenimiento urgente', 'Umbral superado en 50 hrs'],
-    ['△', 'Prueba 3 — Mantenimiento urgente', 'Umbral superado en 1 hrs']
-  ];
+  const totalMachines = dashboardData.machines.length || dashboardData.stats.length;
+  const availableMachines = dashboardData.machines.filter((machine) => machine.estado === 'Disponible').length;
+  const rentedMachines = dashboardData.machines.filter((machine) => machine.estado === 'Arrendada').length;
+  const maintenanceMachines = dashboardData.machines.filter((machine) => ['Mantencion', 'Mantenimiento'].includes(machine.estado)).length;
+  const hasData = dashboardData.loaded && totalMachines > 0;
 
   return (
     <div className="dashboard-home">
       <section className="welcome-panel"><WelcomeIdentity azureConfigured={azureConfigured} />{azureConfigured ? <AuthenticatedHomeActions checkBff={checkBff} status={status} /> : <span className="demo-label">Vista previa local</span>}</section>
       <section className="metric-grid dashboard-metrics">
-        <MetricCard label="Total maquinaria" value="8" detail="5 categorías de estado" tone="blue" />
-        <MetricCard label="Disponibles" value="1" detail="Listas para uso" tone="green" />
-        <MetricCard label="En arriendo" value="2" detail="Activos hoy" tone="orange" />
-        <MetricCard label="Mantenimiento urgente" value="3" detail="Acción requerida" tone="red" />
+        <MetricCard label="Total maquinaria" value={hasData ? totalMachines : '—'} detail={hasData ? 'Datos del BFF' : 'Sin datos disponibles'} tone="blue" />
+        <MetricCard label="Disponibles" value={hasData ? availableMachines : '—'} detail={hasData ? 'Listas para uso' : 'Sin datos disponibles'} tone="green" />
+        <MetricCard label="En arriendo" value={hasData ? rentedMachines : '—'} detail={hasData ? 'Activos hoy' : 'Sin datos disponibles'} tone="orange" />
+        <MetricCard label="Mantenimiento urgente" value={hasData ? maintenanceMachines : '—'} detail={hasData ? 'Requieren revisión' : 'Sin datos disponibles'} tone="red" />
       </section>
       <section className="dashboard-grid">
-        <article className="dashboard-card alerts-card"><h2>Alertas críticas</h2><div className="alert-list">{demoAlerts.map(([icon, title, detail]) => <div className="critical-alert" key={title}><span className="critical-icon">{icon}</span><div><strong>{title}</strong><span>{detail}</span></div></div>)}</div></article>
-        <article className="dashboard-card park-card"><h2>Estado del parque</h2><ParkRow label="Disponibles" value="1" percent="13%" width="13%" /><ParkRow label="En arriendo" value="2" percent="25%" width="25%" /><ParkRow label="Mantenimiento" value="2" percent="25%" width="25%" /><div className="demo-chart"><div className="chart-y-axis"><span>45.000</span><span>30.000</span><span>15.000</span><span>0</span></div><div className="chart-bars"><i style={{ height: '82%' }} /><i style={{ height: '7%' }} /><i style={{ height: '3%' }} /><i style={{ height: '5%' }} /><i style={{ height: '2%' }} /></div></div><div className="chart-labels"><span>Prueba</span><span>CAT 320D</span><span>Retroexcavadora JCB 3CX</span><span>Prueba 4</span><span>Prueba 2</span></div></article>
+        <article className="dashboard-card alerts-card"><h2>Alertas críticas</h2><div className="empty-dashboard-state">No hay alertas disponibles.</div></article>
+        <article className="dashboard-card park-card"><h2>Estado del parque</h2><ParkRow label="Disponibles" value={hasData ? availableMachines : '—'} percent={hasData ? percent(availableMachines, totalMachines) : '—'} width={hasData ? percent(availableMachines, totalMachines) : '0%'} /><ParkRow label="En arriendo" value={hasData ? rentedMachines : '—'} percent={hasData ? percent(rentedMachines, totalMachines) : '—'} width={hasData ? percent(rentedMachines, totalMachines) : '0%'} /><ParkRow label="Mantenimiento" value={hasData ? maintenanceMachines : '—'} percent={hasData ? percent(maintenanceMachines, totalMachines) : '—'} width={hasData ? percent(maintenanceMachines, totalMachines) : '0%'} /><div className="empty-dashboard-state">{hasData ? 'Selecciona Reportes para consultar la evolución de uso.' : 'Sin datos del parque disponibles.'}</div></article>
       </section>
-      {!azureConfigured && <div className="preview-note">Los indicadores mostrados son datos de demostración para revisar el diseño. La conexión real se activará al configurar Microsoft Entra ID y el BFF.</div>}
+      {azureConfigured && dashboardData.loaded && !hasData && <div className="preview-note">El BFF está conectado, pero todavía no hay datos de maquinaria disponibles.</div>}
     </div>
   );
 }
 
 function WelcomeIdentity({ azureConfigured }) {
   if (!azureConfigured) {
-    return <div><h2>Bienvenido al Sistema SRMM</h2><p>Sesión activa como: <strong>Admin Inicial</strong> · admin@srmm.cl</p></div>;
+    return <div><h2>Bienvenido al Sistema SRMM</h2><p>Configura Microsoft Entra ID para iniciar sesión.</p></div>;
   }
 
   return <WelcomeAccount />;
@@ -72,6 +89,10 @@ function MetricCard({ label, value, detail, tone }) {
 
 function ParkRow({ label, value, percent, width }) {
   return <div className="park-row"><span>{label}</span><div><i style={{ width }} /></div><strong>{value} <small>({percent})</small></strong></div>;
+}
+
+function percent(value, total) {
+  return total ? `${Math.round((value / total) * 100)}%` : '0%';
 }
 
 function AuthenticatedHomeActions({ checkBff, status }) {

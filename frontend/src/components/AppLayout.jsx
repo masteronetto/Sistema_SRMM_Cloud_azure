@@ -35,7 +35,7 @@ export default function AppLayout({ azureConfigured }) {
           <span className="nav-link nav-disabled"><span className="nav-icon">●</span>Usuarios</span>
         </nav>
         <div className="sidebar-user">
-          {azureConfigured ? <SessionProfile /> : <><div className="user-avatar">AI</div><div className="user-copy"><strong>Admin Inicial</strong><span>admin@srmm.cl</span><em>Vista previa</em></div></>}
+          {azureConfigured ? <SessionProfile /> : <><div className="user-avatar">U</div><div className="user-copy"><strong>Sesión local</strong><span>Cuenta no configurada</span><em>Sin autenticación</em></div></>}
           {azureConfigured && <AzureSession />}
         </div>
       </aside>
