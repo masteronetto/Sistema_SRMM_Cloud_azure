@@ -81,6 +81,7 @@ td strong { color: #142033; }
 .access-placeholder { max-width: 760px; margin: 120px auto; padding: 42px; border: 1px solid #d4e3df; border-radius: 8px; background: #fff; box-shadow: 0 15px 40px rgba(25,69,59,.06); }
 .access-placeholder h1 { font-size: clamp(2rem, 4vw, 3.8rem); }
 .access-placeholder p:last-child { color: #60716d; }
+.access-placeholder .access-eyebrow { color: #6d5141; }
 .metric-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin: 24px 0 16px; }
 .metric-card { padding: 22px; border: 1px solid #d4e3df; border-radius: 8px; background: #fff; }
 .metric-card span { color: #60716d; font-size: .82rem; }

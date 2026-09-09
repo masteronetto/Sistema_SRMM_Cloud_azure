@@ -19,7 +19,7 @@ function TenantUnavailable() {
 
 function NoRoleAssigned() {
   const { account } = useIdentity();
-  return <section className="access-placeholder"><p className="eyebrow">Acceso pendiente</p><h1>No tienes un rol asignado.</h1><p>{account?.username || 'Tu cuenta Microsoft'} está autenticada, pero un administrador debe asignarte un App Role en SRMM BFF API.</p></section>;
+  return <section className="access-placeholder"><p className="eyebrow access-eyebrow">Acceso pendiente</p><h1>No tienes un rol asignado.</h1><p>{account?.username || 'Tu cuenta Microsoft'} está autenticada, pero un administrador debe asignarte un App Role en SRMM BFF API.</p></section>;
 }
 
 function ProtectedView({ children }) {
