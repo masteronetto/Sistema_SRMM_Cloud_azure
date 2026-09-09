@@ -20,6 +20,13 @@ export function IdentityProvider({ children }) {
     setLoading(true);
     getCurrentUser()
       .then((value) => {
+        console.info('Identidad recibida desde BFF:', {
+          name: value.name,
+          roles: value.roles,
+          scopes: value.scopes,
+          tokenVersion: value.tokenVersion,
+          audience: value.audience
+        });
         if (active) setProfile(value);
       })
       .catch(() => {
