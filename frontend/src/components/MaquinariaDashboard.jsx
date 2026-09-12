@@ -137,7 +137,7 @@ export default function MaquinariaDashboard() {
             <table>
               <thead><tr><th>Modelo</th><th>Estado</th><th>Horómetro</th><th>Tarifa</th><th>Acción</th></tr></thead>
               <tbody>
-                {!loading && maquinaria.length === 0 && <tr><td colSpan="5" className="empty-row">No hay datos. El BFF debe conectar el repositorio de maquinaria.</td></tr>}
+                {!loading && maquinaria.length === 0 && <tr><td colSpan="5" className="empty-row">No hay datos disponibles.</td></tr>}
                 {maquinaria.map((machine) => (
                   <tr key={machine.id_maquina}>
                     <td><strong>{machine.modelo_equipo}</strong></td>

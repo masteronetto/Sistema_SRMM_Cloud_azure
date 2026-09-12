@@ -1,15 +1,15 @@
 import { Router } from 'express';
 import { requireAnyRole, requireAzureToken } from '../middleware/azureAuth.js';
+import * as controller from '../domains/reportes/reportes.controller.js';
 
 const router = Router();
-const pending = (_req, res) => res.status(501).json({ message: 'El contrato de reportes esta definido, pero el repositorio cloud aun no esta conectado.' });
 
 router.use(requireAzureToken);
-router.get('/estadisticas', pending);
-router.get('/top-maquinas', pending);
-router.get('/autores', requireAnyRole('Administrador', 'Mecanico'), pending);
-router.get('/uso-historico/:id', pending);
-router.get('/ingresos', requireAnyRole('Administrador'), pending);
-router.get('/ingresos/csv', requireAnyRole('Administrador'), pending);
+router.get('/estadisticas', controller.estadisticas);
+router.get('/top-maquinas', controller.topMaquinas);
+router.get('/autores', requireAnyRole('Administrador', 'Mecanico'), controller.autores);
+router.get('/uso-historico/:id', controller.usoHistorico);
+router.get('/ingresos', requireAnyRole('Administrador'), controller.ingresos);
+router.get('/ingresos/csv', requireAnyRole('Administrador'), controller.ingresosCsv);
 
 export default router;
