@@ -54,6 +54,25 @@ h1 { max-width: 760px; margin: 0; font-size: clamp(2.5rem, 6vw, 5.8rem); line-he
 .panel-toolbar h2 { margin: 0; font-size: 1.25rem; }
 .panel-toolbar p { margin: 5px 0 0; color: #60716d; font-size: .88rem; }
 .table-wrap { overflow-x: auto; }
+
+/* Arriendo flow polish */
+.arriendo-dashboard { width: min(1240px, calc(100vw - 260px)); max-width: 100%; }
+.arriendo-dashboard .view-heading { align-items: center; }
+.arriendo-dashboard .view-heading .role-badge { white-space: nowrap; align-self: center; }
+.arriendo-dashboard .machinery-panel { margin-top: 16px; }
+.arriendo-form { display: flex; flex-direction: column; gap: 18px; }
+.arriendo-form-grid { display: grid; grid-template-columns: repeat(4, minmax(170px, 1fr)); gap: 14px; align-items: end; }
+.arriendo-form-field { display: flex; flex-direction: column; gap: 8px; color: #60716d; font-size: .78rem; font-weight: 700; }
+.arriendo-form-field span { color: #142033; }
+.arriendo-form-field input,
+.arriendo-form-field select { width: 100%; min-height: 40px; padding: 9px 11px; border: 1px solid #cbdcd7; border-radius: 7px; color: #142033; background: #f7faf9; font: inherit; }
+.arriendo-form .form-actions { display: flex; flex-wrap: wrap; gap: 10px; justify-content: flex-start; }
+
+/* Footer/sidebar session-control layout alignment */
+.sidebar .session-controls { position: static; right: auto; bottom: auto; left: auto; display: flex; align-items: center; gap: 8px; width: auto; margin-top: 8px; }
+.sidebar .session-controls .session-user { display: none; }
+.sidebar .session-controls .button-quiet { min-width: auto; }
+.sidebar .button-quiet { padding: 7px 10px; font-size: .66rem; }
 table { width: 100%; min-width: 650px; border-collapse: collapse; text-align: left; font-size: .88rem; }
 th { padding: 0 12px 12px; color: #60716d; font-size: .72rem; letter-spacing: .08em; text-transform: uppercase; }
 td { padding: 15px 12px; border-top: 1px solid #e5eeeb; color: #60716d; }
@@ -100,6 +119,12 @@ td strong { color: #142033; }
   .main-nav { overflow-x: auto; }
   .module-view { margin-top: 48px; }
   .metric-grid, .report-grid { grid-template-columns: 1fr; }
+  .arriendo-form-grid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 1100px) {
+  .arriendo-dashboard { width: 100%; }
+  .arriendo-form-grid { grid-template-columns: repeat(2, minmax(180px, 1fr)); }
 }
 
 /* Dashboard visual base aligned with the original SRMM workspace. */
@@ -123,9 +148,11 @@ body { overflow-x: hidden; background: #f3eee9; }
 .user-copy span { color: #e0d8d0; white-space: nowrap; }
 .user-copy em { align-self: flex-start; margin-top: 3px; padding: 2px 6px; border-radius: 8px; color: #1eac6d; background: rgba(30,172,109,.18); font-size: .58rem; font-style: normal; font-weight: 800; }
 .user-copy em.role-missing { color: #f7c98e; background: rgba(230,126,34,.2); }
-.sidebar .session-controls { position: absolute; right: 10px; bottom: 9px; left: 52px; display: block; }
-.sidebar .session-user { display: none; }
-.sidebar .button-quiet { padding: 5px 8px; color: #f4a095; background: rgba(210,83,72,.25); font-size: .6rem; }
+
+.sidebar .session-controls { position: relative; right: auto; bottom: auto; left: auto; display: flex; align-items: center; justify-content: flex-start; gap: 8px; width: 100%; margin-top: 8px; }
+.sidebar .session-controls .session-user { display: none; }
+.sidebar .session-controls .button-quiet { padding: 5px 8px; color: #f4a095; background: rgba(210,83,72,.25); font-size: .6rem; }
+.sidebar .session-controls .button-quiet { margin-left: 2px; }
 .sidebar-login-button { flex: 0 0 calc(100% - 40px); width: calc(100% - 40px); margin: 5px 0 0 40px; padding: 7px 5px; border-radius: 4px; font-size: .64rem; line-height: 1.2; }
 .workspace { width: 100%; min-width: 0; margin-left: 191px; }
 .topbar { display: flex; align-items: center; justify-content: space-between; min-height: 54px; max-width: none; margin: 0; padding: 0 20px; border-bottom: 1px solid #e8e0d9; background: #faf8f6; }

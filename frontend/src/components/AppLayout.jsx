@@ -30,7 +30,7 @@ export default function AppLayout({ azureConfigured }) {
           <NavLink className={linkClass} to="/maquinaria"><span className="nav-icon">✣</span>Maquinaria</NavLink>
           <NavLink className={linkClass} to="/historial"><span className="nav-icon">◉</span>Mantenimiento</NavLink>
           <NavLink className={linkClass} to="/reportes"><span className="nav-icon">▤</span>Reportes</NavLink>
-          <span className="nav-link nav-disabled"><span className="nav-icon">↻</span>Arriendo</span>
+          <NavLink className={linkClass} to="/arriendo"><span className="nav-icon">↻</span>Arriendo</NavLink>
           <span className="nav-link nav-disabled"><span className="nav-icon">➜</span>Logística</span>
           <span className="nav-link nav-disabled"><span className="nav-icon">●</span>Usuarios</span>
         </nav>

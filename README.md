@@ -1,270 +1,145 @@
 # Sistema SRMM
 
-Sistema de gestion para maquinaria, mantenimiento y operacion en terreno. El proyecto integra una API REST en Node.js/Express, frontend estatico y base de datos PostgreSQL.
+SRMM es una plataforma de gesti�n operativa para maquinaria, mantenimientos, arriendos, log�stica y reportes. El repositorio combina una base funcional heredada con una nueva base cloud-native construida sobre React/Vite en el frontend y un BFF Express en la carpeta backend.
 
-## Tabla de contenidos
+## Objetivo de la migraci�n
 
-- [Descripcion general](#descripcion-general)
-- [Arquitectura del proyecto](#arquitectura-del-proyecto)
-- [Tecnologias](#tecnologias)
-- [Requisitos](#requisitos)
-- [Puesta en marcha local](#puesta-en-marcha-local)
-- [Variables de entorno](#variables-de-entorno)
-- [Comandos disponibles](#comandos-disponibles)
-- [Modulos de la API](#modulos-de-la-api)
-- [Pruebas](#pruebas)
-- [Despliegue y entornos](#despliegue-y-entornos)
-- [Solucion de problemas](#solucion-de-problemas)
+La migraci�n est� orientada a dejar la capa de integraci�n web sobre un contrato de BFF protegido con autenticaci�n de Microsoft Entra y a mover el acceso a datos hacia PostgreSQL con un patr�n de dominio consistente.
 
-## Descripcion general
-
-SRMM centraliza procesos operativos relacionados con:
-
-- Gestion de maquinaria
-- Planificacion y registro de mantenimientos
-- Control de incidencias
-- Arriendos y logistica
-- Reporteria operativa
-- Alertas criticas y notificaciones en tiempo real
-- Gestion de autenticacion y roles
-
-El backend expone endpoints bajo el prefijo `/api/*` y tambien sirve frontend estatico desde `public/` o `frontend/`.
-
-## Arquitectura del proyecto
-
-Estructura principal del repositorio:
+## Arquitectura objetivo
 
 ```text
-Sistema_SRMM/
-├── src/
-│   ├── app.js
-│   ├── server.js
-│   ├── config/
-│   ├── db/
-│   ├── middleware/
-│   └── Entities/
-├── public/
-├── frontend/
-├── sql/
-├── scripts/
-├── tests/
-├── docker-compose.yml
-└── package.json
+frontend/                   # SPA React/Vite
++-- src/
+    +-- components/
+
+backend/                    # BFF Express protegido por Azure token
++-- src/
+    +-- config/env.js
+    +-- middleware/azureAuth.js
+    +-- routes/
+    +-- domains/
+        +-- maquinaria/
+        +-- reportes/
+        +-- arriendos/
+
+src/                        # legado del monolito cl�sico
++-- Entities/
+
+sql/                        # scripts de base de datos y migraciones
 ```
 
-Componentes clave:
+## Patr�n por dominio
 
-- `src/app.js`: configuracion de Express, rutas, middleware y entrega de archivos estaticos.
-- `src/server.js`: inicializacion del servidor HTTP, Socket.IO y tareas programadas.
-- `src/Entities/`: organizacion por dominio (controlador, repositorio y rutas por modulo).
-- `sql/`: scripts de inicializacion y evolucion de base de datos.
-- `scripts/`: automatizacion para base de datos y utilidades operativas.
+La base nueva usa una estructura uniforme por dominio:
 
-## Tecnologias
+```text
+backend/src/domains/<dominio>/
++-- <dominio>.dto.js
++-- <dominio>.service.js
++-- <dominio>.repository.js
++-- <dominio>.controller.js
 
-- Node.js
-- Express
-- PostgreSQL
-- Socket.IO
-- Docker / Docker Compose
+backend/src/routes/<dominio>.routes.js
+```
 
-Dependencias relevantes:
+El patr�n organiza la l�gica as�:
 
-- `pg` para acceso a PostgreSQL
-- `jsonwebtoken` para autenticacion JWT
-- `bcryptjs` para hash de contrasenas
-- `nodemailer` para recuperacion de cuenta por correo
+1. `dto`: transforma la estructura de entrada y salida.
+2. `service`: aplica validaciones de negocio.
+3. `repository`: consulta PostgreSQL con SQL real.
+4. `controller`: responde al cliente del BFF.
+5. `routes`: monta y protege el contrato con token Azure y roles.
 
-## Requisitos
+## Dominio migrado
 
-- Node.js 18 o superior
-- npm
-- Docker y Docker Compose
+La migraci�n ya dej� el siguiente patr�n en fases funcionales:
 
-## Puesta en marcha local
+- maquinaria
+- reportes
+- arriendos
 
-### 1) Instalar dependencias
+El flujo de arriendos se prepara siguiendo la misma disciplina: DTO, servicio, repositorio, controlador y route del BFF.
+
+## Rutas del BFF
+
+El BFF se conecta con estas rutas principales:
+
+```text
+/api/me
+/api/maquinaria
+/api/reportes
+/api/arriendos
+/api/mantenimientos
+```
+
+El endpoint `/api/me` entrega el perfil validado con una identidad de Microsoft Entra y el conjunto de roles asociados al token.
+
+## Roles y permisos
+
+La capa de seguridad valida el token del usuario, su audiencia y el issuer esperado. Los roles extra�dos desde el perfil del token se aplican al recurso solicitado:
+
+- consulta p�blica o lectura con permisos base,
+- autorizaci�n de escritura para roles con manejo administrativo,
+- vista anal�tica y CSV adecuada al perfil del usuario.
+
+## Datos y base PostgreSQL
+
+La parte cloud-native usa PostgreSQL como motor principal de lectura y escritura para los contratos de dominio ya migrados. Las tablas y columnas de cada dominio deben alinearse con el DTO y el repositorio del BFF para evitar fallas de serializaci�n o contrato.
+
+## Frontend
+
+El frontend en React/Vite consume el BFF con la intenci�n de dejar una UI uniforme y compatibilizada con el perfil de roles.
+
+## Backend
+
+El backend bajo `backend/` tiene la misi�n de:
+
+- validar el token Microsoft Entra,
+- extender el perfil del usuario con roles,
+- montar cada dominio con su ruta correspondiente,
+- devolver respuestas JSON normalizadas,
+- consultar PostgreSQL con un repositorio compatible con cada dominio.
+
+## Estado de migraci�n
+
+La secuencia funcional propuesta es:
+
+1. Maquinaria
+2. Reportes
+3. Arriendos
+4. Log�stica
+5. Usuarios
+6. Limpieza de legacy
+7. Preparaci�n para cloud/publicaci�n
+
+## Entorno local
+
+Para ejecutar el frontend localmente:
 
 ```bash
+cd frontend
 npm install
-```
-
-### 2) Configurar variables de entorno
-
-```bash
-cp .env.example .env
-```
-
-Ajusta valores segun tu entorno local o cloud.
-
-### 3) Levantar base de datos local
-
-```bash
-npm run db:start
-```
-
-### 4) Iniciar API en modo desarrollo
-
-```bash
 npm run dev
 ```
 
-### 5) Verificar estado del servicio
+Para ejecutar el BFF localmente:
 
-- Healthcheck API: `GET /health`
-- URL local por defecto: `http://localhost:3000`
+```bash
+cd backend
+npm install
+npm run dev
+```
 
-## Variables de entorno
-
-Archivo base: `.env.example`
-
-El prototipo nuevo funciona con la base de datos desactivada por defecto. La variable `DATABASE_ENABLED` debe cambiarse explicitamente a `true` antes de configurar una base de datos local o cloud. No se incluyen credenciales ni conexiones de Supabase en este repositorio.
-
-Variables mas utilizadas:
-
-| Variable | Descripcion |
-| --- | --- |
-| `PORT` | Puerto de la API |
-| `DATABASE_ENABLED` | Habilita explicitamente la conexion a PostgreSQL (`false` por defecto) |
-| `DB_HOST` | Host de PostgreSQL |
-| `DB_PORT` | Puerto de PostgreSQL |
-| `DB_NAME` | Nombre de base de datos |
-| `DB_USER` | Usuario de base de datos |
-| `DB_PASSWORD` | Contrasena de base de datos |
-| `DB_SSL` | Activa conexion SSL (`true`/`false`) |
-| `DATABASE_URL` | Cadena completa de conexion (opcional, prioritaria en cloud) |
-| `INTERVALO_VERIFICACION_RETRASOS` | Intervalo de scheduler de retrasos en ms |
-| `SMTP_USER` | Cuenta para envio de correos |
-| `SMTP_PASS` | Clave/App Password del proveedor SMTP |
-| `SMTP_HOST` | Host SMTP (ejemplo: `smtp.gmail.com`) |
-| `SMTP_PORT` | Puerto SMTP (Gmail SSL: `465`) |
-| `SMTP_SECURE` | Conexion segura SMTP (`true` para 465) |
-| `SMTP_FROM` | Remitente de correos |
-| `SMTP_GMAIL` | Habilita modo Gmail |
-| `FRONTEND_URL` | URL publica del frontend para links de recuperacion |
-
-## Comandos disponibles
-
-### Aplicacion
-
-| Comando | Descripcion |
-| --- | --- |
-| `npm run dev` | Inicia servidor con recarga automatica |
-| `npm start` | Inicia servidor en modo normal |
-| `npm test` | Ejecuta pruebas definidas en `tests/reportes.test.js` |
-
-### Base de datos
-
-| Comando | Descripcion |
-| --- | --- |
-| `npm run db:start` | Levanta PostgreSQL via scripts locales |
-| `npm run db:stop` | Detiene contenedores Docker |
-| `npm run db:status` | Muestra estado de contenedores |
-| `npm run db:logs` | Muestra logs de PostgreSQL |
-| `npm run db:connect` | Abre sesion psql en el contenedor |
-
-### Utilidades
-
-| Comando | Descripcion |
-| --- | --- |
-| `bash scripts/db-utils.sh` | Muestra ayudas de utilidades |
-| `bash scripts/db-utils.sh backup` | Genera backup de base de datos |
-| `bash scripts/restore-db.sh <archivo.sql>` | Restaura un backup SQL |
-| `node scripts/check-route-exports.js` | Revisa exportaciones de rutas |
-
-## Modulos de la API
-
-Rutas disponibles por dominio (prefijo `/api`):
-
-- `/auth`
-- `/usuarios`
-- `/maquinaria`
-- `/mantenimientos`
-- `/incidencias`
-- `/historial-uso`
-- `/reportes`
-- `/alertas-criticas`
-- `/notificaciones-tiempo-real`
-- `/planes-mantencion`
-- `/arriendos`
-- `/logistica`
-- `/role-requests`
+La base PostgreSQL se gestiona con Docker Compose y se conecta mediante variables de entorno sin versionar secretos ni credenciales.
 
 ## Pruebas
 
-Ejecucion:
+La suite de pruebas existente se ejecuta desde la ra�z:
 
 ```bash
 npm test
 ```
 
-Actualmente el repositorio incluye pruebas orientadas a reportes:
+## Notas
 
-- `tests/reportes.test.js`
-
-## Despliegue y entornos
-
-El backend contempla ejecucion en entornos serverless (por ejemplo Vercel):
-
-- Si detecta entorno serverless, evita iniciar procesos en segundo plano no compatibles.
-- En este prototipo la base de datos permanece deshabilitada para evitar conexiones externas accidentales.
-- La futura base de datos debe configurarse mediante variables de entorno del entorno de despliegue, nunca mediante credenciales versionadas.
-
-## Base de trabajo cloud native
-
-La carpeta `docs/architecture.md` registra la arquitectura objetivo para la siguiente etapa: frontend React con MSAL, API Gateway, BFF protegido con JWT y servicios backend separados. El código actual se conserva como referencia funcional de maquinaria, mantenimientos, usuarios y reportes; no se considera todavía la implementación final de esa arquitectura.
-
-## Nueva base de trabajo
-
-- Frontend React/Vite: `frontend/`
-- BFF independiente preparado para Azure AD: `backend/`
-- El frontend se inicia con `npm install` y `npm run build` dentro de `frontend/`.
-- El BFF se inicia con `npm install` y `npm run dev` dentro de `backend/`.
-- Copia los archivos `.env.example` correspondientes cuando se vaya a configurar el entorno.
-
-## Solucion de problemas
-
-### PostgreSQL no inicia
-
-```bash
-npm run db:logs
-npm run db:status
-```
-
-Si persiste, reinicia contenedores:
-
-```bash
-docker-compose down -v
-docker-compose up -d
-```
-
-### Puerto 5432 en uso
-
-```bash
-lsof -i :5432
-```
-
-Cambia el mapeo de puertos en `docker-compose.yml` si es necesario.
-
-### API responde 503 en rutas `/api/*`
-
-Esto ocurre cuando la base de datos no esta configurada o no es accesible. Revisa:
-
-- Variables de entorno de conexion
-- Estado de PostgreSQL
-- Conectividad de red en entorno cloud
-
-### Error SMTP al recuperar contrasena
-
-Para Gmail, usa App Password con verificacion en dos pasos habilitada.
-
-Checklist recomendado:
-
-- `SMTP_USER` debe ser el correo completo de Gmail.
-- `SMTP_PASS` debe ser una App Password de 16 caracteres (sin espacios).
-- `SMTP_HOST=smtp.gmail.com`, `SMTP_PORT=465`, `SMTP_SECURE=true`.
-- Si usas variable `SMTP_FROM`, debe pertenecer a la cuenta autorizada por el proveedor.
-
-## Licencia
-
-Definir segun politica del proyecto (pendiente).
