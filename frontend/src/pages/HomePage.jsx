@@ -10,19 +10,21 @@ export default function HomePage({ azureConfigured }) {
   const navigate = useNavigate();
   const { profile, loading } = useIdentity();
   const [status, setStatus] = useState('');
-  const [dashboardData, setDashboardData] = useState({ stats: [], machines: [], loaded: false });
+  const [dashboardData, setDashboardData] = useState({ stats: [], machines: [], alerts: [], loaded: false });
 
   useEffect(() => {
     if (!azureConfigured || loading || !profile?.roles?.length) return undefined;
     let active = true;
     Promise.allSettled([
       getReportData('/reportes/estadisticas'),
-      getReportData('/reportes/top-maquinas')
-    ]).then(([statsResult, machinesResult]) => {
+      getReportData('/reportes/top-maquinas'),
+      getReportData('/reportes/alertas-criticas')
+    ]).then(([statsResult, machinesResult, alertsResult]) => {
       if (!active) return;
       setDashboardData({
         stats: statsResult.status === 'fulfilled' && Array.isArray(statsResult.value) ? statsResult.value : [],
         machines: machinesResult.status === 'fulfilled' && Array.isArray(machinesResult.value) ? machinesResult.value : [],
+        alerts: alertsResult.status === 'fulfilled' && Array.isArray(alertsResult.value) ? alertsResult.value : [],
         loaded: true
       });
     });
@@ -61,7 +63,25 @@ export default function HomePage({ azureConfigured }) {
         <MetricCard label="Mantenimiento urgente" value={hasData ? maintenanceMachines : '—'} detail={hasData ? 'Requieren revisión' : 'Sin datos disponibles'} tone="red" />
       </section>
       <section className="dashboard-grid">
-        <article className="dashboard-card alerts-card"><h2>Alertas críticas</h2><div className="empty-dashboard-state">No hay alertas disponibles.</div></article>
+        <article className="dashboard-card alerts-card">
+          <h2>Alertas críticas</h2>
+          {dashboardData.alerts.length === 0 ? (
+            <div className="empty-dashboard-state">No hay alertas disponibles.</div>
+          ) : (
+            <div className="alert-list">
+              {dashboardData.alerts.map((alert) => (
+                <div className="critical-alert" key={alert.id_incidencia || alert.descripcion}>
+                  <span className="critical-icon">!</span>
+                  <div>
+                    <strong>{alert.modelo_equipo || 'Máquina'} · {alert.criticidad || 'Alta'}</strong>
+                    <span>{alert.estado || 'Pendiente'} · {alert.fecha || 'Sin fecha'}</span>
+                    <span>{alert.descripcion || 'Revisión requerida.'}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </article>
         <article className="dashboard-card park-card"><h2>Estado del parque</h2><ParkRow label="Disponibles" value={hasData ? availableMachines : '—'} percent={hasData ? percent(availableMachines, totalMachines) : '—'} width={hasData ? percent(availableMachines, totalMachines) : '0%'} /><ParkRow label="En arriendo" value={hasData ? rentedMachines : '—'} percent={hasData ? percent(rentedMachines, totalMachines) : '—'} width={hasData ? percent(rentedMachines, totalMachines) : '0%'} /><ParkRow label="Mantenimiento" value={hasData ? maintenanceMachines : '—'} percent={hasData ? percent(maintenanceMachines, totalMachines) : '—'} width={hasData ? percent(maintenanceMachines, totalMachines) : '0%'} /><div className="empty-dashboard-state">{hasData ? 'Selecciona Reportes para consultar la evolución de uso.' : 'Sin datos del parque disponibles.'}</div></article>
       </section>
       {azureConfigured && dashboardData.loaded && !hasData && <div className="preview-note">El BFF está conectado, pero todavía no hay datos de maquinaria disponibles.</div>}

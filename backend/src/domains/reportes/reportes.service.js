@@ -4,6 +4,7 @@ import {
   toTopMaquinasDto,
   toAutoresDto,
   toUsoHistoricoDto,
+  toAlertasCriticasDto,
   toIngresosDto
 } from './reportes.dto.js';
 
@@ -32,6 +33,11 @@ export async function usoHistorico(idMaquina) {
 
   const rows = await repository.listUsoHistorico(numericId);
   return toUsoHistoricoDto(rows);
+}
+
+export async function alertasCriticas() {
+  const rows = await repository.listAlertasCriticas();
+  return toAlertasCriticasDto(rows);
 }
 
 export async function ingresos({ fecha_inicio, fecha_fin } = {}) {

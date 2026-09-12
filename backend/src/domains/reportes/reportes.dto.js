@@ -33,6 +33,19 @@ export function toUsoHistoricoDto(rows = []) {
   }));
 }
 
+export function toAlertasCriticasDto(rows = []) {
+  return rows.map((row) => ({
+    id_incidencia: row.id_incidencia,
+    maquinaria_id_maquina: row.maquinaria_id_maquina ?? null,
+    modelo_equipo: row.modelo_equipo ?? null,
+    descripcion: row.descripcion ?? '',
+    criticidad: row.criticidad ?? 'Alta',
+    estado: row.estado ?? 'Pendiente',
+    fecha: row.fecha ? String(row.fecha).slice(0, 10) : null,
+    created_at: row.created_at ?? null
+  }));
+}
+
 export function toIngresosDto(rows = []) {
   return {
     by_maquina: rows.map((row) => ({

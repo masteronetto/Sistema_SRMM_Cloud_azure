@@ -28,3 +28,33 @@ CREATE TABLE IF NOT EXISTS maquinaria (
 
 CREATE INDEX IF NOT EXISTS idx_maquinaria_estado ON maquinaria (estado);
 CREATE INDEX IF NOT EXISTS idx_maquinaria_modelo ON maquinaria (modelo_equipo);
+
+CREATE TABLE IF NOT EXISTS logistica_eventos (
+    id_evento BIGSERIAL PRIMARY KEY,
+    maquinaria_id_maquina BIGINT NULL,
+    arriendos_id_contrato BIGINT NULL,
+    titulo VARCHAR(160) NOT NULL,
+    equipo VARCHAR(160) NOT NULL,
+    cliente VARCHAR(160) NOT NULL,
+    ruta VARCHAR(240) NOT NULL,
+    hora_evento VARCHAR(40) NOT NULL,
+    estado_evento VARCHAR(30) NOT NULL DEFAULT 'Pendiente',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT fk_logistica_maquinaria
+        FOREIGN KEY (maquinaria_id_maquina)
+        REFERENCES maquinaria (id)
+        ON UPDATE CASCADE
+        ON DELETE SET NULL,
+    CONSTRAINT fk_logistica_arriendo
+        FOREIGN KEY (arriendos_id_contrato)
+        REFERENCES arriendos (id_contrato)
+        ON UPDATE CASCADE
+        ON DELETE SET NULL,
+    CONSTRAINT chk_logistica_estado CHECK (estado_evento IN ('Pendiente', 'Confirmado', 'En Ruta', 'Completado', 'Cancelado'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_logistica_eventos_created_at ON logistica_eventos (created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_logistica_eventos_estado ON logistica_eventos (estado_evento);
+CREATE INDEX IF NOT EXISTS idx_logistica_eventos_maquinaria ON logistica_eventos (maquinaria_id_maquina);
+CREATE INDEX IF NOT EXISTS idx_logistica_eventos_arriendo ON logistica_eventos (arriendos_id_contrato);

@@ -117,9 +117,7 @@ export default function MaquinariaDashboard() {
     <section className="machinery-view">
       <div className="view-heading">
         <div>
-          <p className="eyebrow">Dominio operativo</p>
           <h1>Maquinaria</h1>
-          <p className="view-copy">Consulta centralizada de equipos. La edición depende del rol entregado por Microsoft Entra ID.</p>
         </div>
         <div className="role-badge">{currentRole || 'Rol pendiente'}</div>
       </div>

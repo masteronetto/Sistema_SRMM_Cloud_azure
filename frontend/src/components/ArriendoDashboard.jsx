@@ -116,9 +116,7 @@ export default function ArriendoDashboard() {
     <section className="module-view arriendo-dashboard">
       <div className="view-heading">
         <div>
-          <p className="eyebrow">Dominio de contratos</p>
           <h1>Arriendos</h1>
-          <p className="view-copy">Contratos reales, máquinas disponibles y clientes asociados al BFF.</p>
         </div>
         <div className="role-badge">{currentRole || 'Rol pendiente'}</div>
       </div>

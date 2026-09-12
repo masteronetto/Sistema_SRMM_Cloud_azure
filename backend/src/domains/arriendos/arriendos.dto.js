@@ -1,3 +1,13 @@
+function normalizePlainDate(value) {
+  if (!value) return null;
+  if (typeof value === 'string') return value.slice(0, 10);
+  if (value instanceof Date) {
+    const tzOffset = value.getTimezoneOffset() * 60000;
+    return new Date(value.getTime() - tzOffset).toISOString().slice(0, 10);
+  }
+  return String(value).slice(0, 10);
+}
+
 export function toArriendoDto(row = null) {
   if (!row) return null;
 
@@ -13,8 +23,8 @@ export function toArriendoDto(row = null) {
     horometro_salida: row.horometro_salida === null || row.horometro_salida === undefined
       ? null
       : Number(row.horometro_salida),
-    fecha_inicio: row.fecha_inicio ?? null,
-    fecha_fin: row.fecha_fin ?? null,
+    fecha_inicio: normalizePlainDate(row.fecha_inicio),
+    fecha_fin: normalizePlainDate(row.fecha_fin),
     estado_contrato: row.estado_contrato ?? 'Activo'
   };
 }

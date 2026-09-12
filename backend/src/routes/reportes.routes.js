@@ -9,6 +9,7 @@ router.get('/estadisticas', controller.estadisticas);
 router.get('/top-maquinas', controller.topMaquinas);
 router.get('/autores', requireAnyRole('Administrador', 'Mecanico'), controller.autores);
 router.get('/uso-historico/:id', controller.usoHistorico);
+router.get('/alertas-criticas', controller.alertasCriticas);
 router.get('/ingresos', requireAnyRole('Administrador'), controller.ingresos);
 router.get('/ingresos/csv', requireAnyRole('Administrador'), controller.ingresosCsv);
 

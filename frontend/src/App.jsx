@@ -5,6 +5,8 @@ import HistorialMantenciones from './components/HistorialMantenciones';
 import MaquinariaDashboard from './components/MaquinariaDashboard';
 import ReportesDashboard from './components/ReportesDashboard';
 import ArriendoDashboard from './components/ArriendoDashboard';
+import LogisticaDashboard from './components/LogisticaDashboard';
+import UsuariosDashboard from './components/UsuariosDashboard';
 import HomePage from './pages/HomePage';
 import { useIdentity } from './auth/IdentityContext';
 
@@ -42,6 +44,8 @@ export default function App({ azureConfigured }) {
           <Route path="historial" element={protectedView(<HistorialMantenciones />)} />
           <Route path="reportes" element={protectedView(<ReportesDashboard />)} />
           <Route path="arriendo" element={protectedView(<ArriendoDashboard />)} />
+          <Route path="logistica" element={protectedView(<LogisticaDashboard />)} />
+          <Route path="usuarios" element={protectedView(<UsuariosDashboard />)} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>

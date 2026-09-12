@@ -11,6 +11,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./sql/010_cloud_native_base.sql:/docker-entrypoint-initdb.d/01-cloud-native-base.sql
+      - ./sql/011_reportes_cloud_native_tables.sql:/docker-entrypoint-initdb.d/02-reportes-cloud-native-tables.sql
     networks:
       - srmm-network
     healthcheck:

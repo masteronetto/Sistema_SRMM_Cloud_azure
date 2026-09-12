@@ -32,6 +32,14 @@ export async function usoHistorico(req, res, next) {
   }
 }
 
+export async function alertasCriticas(_req, res, next) {
+  try {
+    return res.json(await service.alertasCriticas());
+  } catch (error) {
+    return next(error);
+  }
+}
+
 export async function ingresos(req, res, next) {
   try {
     return res.json(await service.ingresos(req.query));

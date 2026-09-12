@@ -7,6 +7,8 @@ import maquinariaRoutes from './routes/maquinaria.routes.js';
 import reportesRoutes from './routes/reportes.routes.js';
 import arriendosRoutes from './routes/arriendos.routes.js';
 import mantenimientosRoutes from './routes/mantenimientos.routes.js';
+import logisticaRoutes from './routes/logistica.routes.js';
+import usuariosRoutes from './routes/usuarios.routes.js';
 
 const app = express();
 
@@ -27,6 +29,8 @@ app.use('/api/maquinaria', maquinariaRoutes);
 app.use('/api/reportes', reportesRoutes);
 app.use('/api/arriendos', arriendosRoutes);
 app.use('/api/mantenimientos', mantenimientosRoutes);
+app.use('/api/logistica', logisticaRoutes);
+app.use('/api/usuarios', usuariosRoutes);
 
 app.use((error, _req, res, _next) => {
   console.error(error);

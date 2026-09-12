@@ -100,7 +100,7 @@ export default function HistorialMantenciones() {
 
   return (
     <section className="module-view">
-      <div className="view-heading"><div><p className="eyebrow">Dominio técnico</p><h1>Historial de mantenciones</h1><p className="view-copy">Consulta paginada y exportable por máquina, con filtros de fecha y tipo de servicio.</p></div><div className="role-badge">{role || 'Rol pendiente'}</div></div>
+      <div className="view-heading"><div><h1>Historial de mantenciones</h1></div><div className="role-badge">{role || 'Rol pendiente'}</div></div>
       <div className="filter-panel">
         <label>Máquina ID<input type="number" min="1" value={machineId} onChange={(event) => { setMachineId(event.target.value); setPage(1); }} placeholder="Ej. 1" /></label>
         <label>Desde<input type="date" value={fechaFrom} onChange={(event) => { setFechaFrom(event.target.value); setPage(1); }} /></label>

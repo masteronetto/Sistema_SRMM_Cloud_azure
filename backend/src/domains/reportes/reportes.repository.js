@@ -55,6 +55,27 @@ export async function listUsoHistorico(idMaquina) {
   return result.rows;
 }
 
+export async function listAlertasCriticas() {
+  const result = await requireDatabase().query(`
+    SELECT
+      i.id_incidencia,
+      i.maquinaria_id_maquina,
+      m.modelo_equipo,
+      i.descripcion,
+      i.criticidad,
+      i.estado,
+      i.fecha,
+      i.created_at
+    FROM incidencias_maquina i
+    JOIN maquinaria m ON m.id = i.maquinaria_id_maquina
+    WHERE i.criticidad = 'Alta'
+      OR i.estado = 'Pendiente'
+    ORDER BY i.created_at DESC, i.id_incidencia DESC
+    LIMIT 8
+  `);
+  return result.rows;
+}
+
 export async function listIngresos({ fecha_inicio, fecha_fin } = {}) {
   const result = await requireDatabase().query(`
     SELECT

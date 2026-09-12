@@ -31,8 +31,8 @@ export default function AppLayout({ azureConfigured }) {
           <NavLink className={linkClass} to="/historial"><span className="nav-icon">◉</span>Mantenimiento</NavLink>
           <NavLink className={linkClass} to="/reportes"><span className="nav-icon">▤</span>Reportes</NavLink>
           <NavLink className={linkClass} to="/arriendo"><span className="nav-icon">↻</span>Arriendo</NavLink>
-          <span className="nav-link nav-disabled"><span className="nav-icon">➜</span>Logística</span>
-          <span className="nav-link nav-disabled"><span className="nav-icon">●</span>Usuarios</span>
+          <NavLink className={linkClass} to="/logistica"><span className="nav-icon">➜</span>Logística</NavLink>
+          <NavLink className={linkClass} to="/usuarios"><span className="nav-icon">●</span>Usuarios</NavLink>
         </nav>
         <div className="sidebar-user">
           {azureConfigured ? <SessionProfile /> : <><div className="user-avatar">U</div><div className="user-copy"><strong>Sesión local</strong><span>Cuenta no configurada</span><em>Sin autenticación</em></div></>}
@@ -47,7 +47,7 @@ export default function AppLayout({ azureConfigured }) {
             <label className="date-control">07-08-2026 <input type="date" defaultValue="2026-08-07" /></label>
             <label className="date-control">05-09-2026 <input type="date" defaultValue="2026-09-05" /></label>
             <span className="range-pill">Rango: 06-ago — 04-sept</span>
-            <button className="alert-button">△ Alertas</button>
+            <NavLink className="alert-button" to="/reportes">△ Alertas</NavLink>
           </div>
         </header>
         <Outlet />
