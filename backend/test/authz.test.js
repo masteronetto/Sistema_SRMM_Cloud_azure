@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { requireAnyRole, requireAzureToken } from '../src/middleware/azureAuth.js';
+import { normalizeClienteId } from '../src/domains/arriendos/arriendos.service.js';
 
 function responseDouble() {
   return {
@@ -43,4 +44,11 @@ test('permite un usuario con el App Role requerido', () => {
 
   assert.equal(continued, true);
   assert.equal(response.statusCode, null);
+});
+
+test('acepta un identificador de sujeto de Entra como cliente valido en arriendos', () => {
+  const oid = 'fa2ba61e-0652-4723-bcbf-92d5428a3216';
+
+  assert.equal(normalizeClienteId(oid), oid);
+  assert.equal(normalizeClienteId('   '), null);
 });
