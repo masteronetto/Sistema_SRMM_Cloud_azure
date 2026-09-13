@@ -7,3 +7,4 @@ build/
 .env
 .env*.local
 cookies.txt
+jwks.json
