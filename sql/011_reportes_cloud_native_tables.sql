@@ -73,27 +73,3 @@ CREATE TABLE IF NOT EXISTS incidencias_maquina (
         CHECK (estado IN ('Pendiente', 'Resuelta'))
 );
 
-CREATE TABLE IF NOT EXISTS arriendos (
-    id_contrato BIGSERIAL PRIMARY KEY,
-    maquinaria_id_maquina BIGINT NOT NULL,
-    cliente_id VARCHAR(64) NULL,
-    fecha_inicio DATE NOT NULL DEFAULT CURRENT_DATE,
-    fecha_fin DATE NULL,
-    estado_contrato VARCHAR(30) NOT NULL DEFAULT 'Activo',
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    CONSTRAINT fk_arriendos_maquina
-        FOREIGN KEY (maquinaria_id_maquina)
-        REFERENCES maquinaria (id)
-        ON UPDATE CASCADE
-        ON DELETE RESTRICT,
-    CONSTRAINT fk_arriendos_cliente
-        FOREIGN KEY (cliente_id)
-        REFERENCES identidad_usuario (oid)
-        ON UPDATE CASCADE
-        ON DELETE SET NULL,
-    CONSTRAINT chk_arriendos_estado
-        CHECK (estado_contrato IN ('Activo', 'Finalizado', 'Cancelado'))
-);
-
-CREATE INDEX IF NOT EXISTS idx_arriendos_maquina ON arriendos (maquinaria_id_maquina);
