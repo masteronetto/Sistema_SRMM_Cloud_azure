@@ -75,6 +75,47 @@ La capa de seguridad valida el token del usuario, su audiencia y el issuer esper
 - autorizaci�n de escritura para roles con manejo administrativo,
 - vista anal�tica y CSV adecuada al perfil del usuario.
 
+## Microsoft Entra ID
+
+Microsoft Entra ID es el proveedor de identidad y autorizacion de la aplicacion. Se registraron dos aplicaciones relacionadas:
+
+- Frontend React como aplicacion publica (SPA), con Client ID `a6fb1036-e64a-4a05-9414-db582910cfa6`.
+- BFF como API protegida, con Application ID URI `api://27c0d23e-24ca-46d3-b804-eb0940334b2e`.
+
+El frontend solicita el scope delegado:
+
+```text
+api://27c0d23e-24ca-46d3-b804-eb0940334b2e/access_as_user
+```
+
+La integracion del frontend utiliza `@azure/msal-browser` y `@azure/msal-react` para iniciar sesion, adquirir access tokens, renovar tokens silenciosamente y cerrar sesion.
+
+El BFF valida los tokens recibidos antes de procesar las rutas protegidas. La validacion incluye tenant, issuer, audience, firma, expiracion y scope requerido. Las claves publicas se obtienen desde los endpoints JWKS oficiales de Microsoft Entra.
+
+Los App Roles configurados son:
+
+- `Administrador`
+- `Mecanico`
+- `Operador`
+
+Las rutas del BFF aplican estos roles mediante middleware. Por ejemplo, las operaciones de escritura administrativa requieren el rol `Administrador`, mientras que las operaciones de logistica permiten `Administrador` u `Operador` segun la accion.
+
+La identidad validada se puede consultar mediante:
+
+```text
+GET /api/me
+```
+
+La respuesta incluye subject, tenant, audience, scopes y roles detectados desde los claims del token.
+
+Para el entorno publicado se utiliza:
+
+```text
+https://srmm.duckdns.org
+```
+
+Esta direccion debe estar registrada como Redirect URI y logout URI de la aplicacion frontend en Microsoft Entra ID.
+
 ## Datos y base PostgreSQL
 
 La aplicaci�n usa PostgreSQL como motor principal de lectura y escritura. Las tablas y columnas de cada dominio deben alinearse con el DTO y el repositorio del BFF para evitar fallas de serializaci�n o contrato.
