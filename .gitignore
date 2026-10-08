@@ -5,6 +5,10 @@ dist/
 build/
 .vercel
 .env
+.env.*
+!.env.example
 .env*.local
 cookies.txt
 jwks.json
+*.pem
+docker-data/
