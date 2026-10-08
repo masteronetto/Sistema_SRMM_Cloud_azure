@@ -88,7 +88,11 @@ export async function startConsumer() {
 
 if (process.argv[1] && process.argv[1].endsWith('consumer.js')) {
   startConsumer().catch((error) => {
-    console.error('No se pudo iniciar el consumidor de notificaciones.', { message: error.message });
+    console.error('No se pudo iniciar el consumidor de notificaciones.', {
+      name: error.name,
+      code: error.code || null,
+      message: error.message || String(error)
+    });
     process.exitCode = 1;
   });
 }

@@ -216,9 +216,10 @@ requieran.
 
 ### Objetivo
 
-Agregar RabbitMQ con `rabbitmq:3-management` al Compose sin publicar los
-puertos `5672` ni `15672`, y completar el flujo de arriendo creado hacia una
-notificacion.
+Agregar RabbitMQ con `rabbitmq:3-management` al Compose. Para desarrollo local,
+los puertos `5672` y `15672` se publican únicamente en `127.0.0.1`; en EC2 no
+se publican y se accede a la consola mediante túnel SSH. Completar el flujo de
+arriendo creado hacia una notificacion.
 
 ### Archivos
 
@@ -256,8 +257,8 @@ motivo.
 
 - `fase-2/01-compose-ps.txt`: `docker compose ps` con PostgreSQL y RabbitMQ
   saludables.
-- `fase-2/02-rabbit-ports.txt`: evidencia de que el Compose no publica 5672 ni
-  15672 al host.
+- `fase-2/02-rabbit-ports.txt`: evidencia de que el Compose local solo publica
+  `127.0.0.1:5672` y `127.0.0.1:15672`, nunca una interfaz pública.
 - `fase-2/03-config-test.txt`: tests de nombres centralizados y reintentos.
 - `fase-2/04-rental-event.txt`: logs del BFF con publicación confirmada y
   respuesta HTTP normal del arriendo.
