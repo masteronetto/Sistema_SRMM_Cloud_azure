@@ -1,6 +1,6 @@
-# EP3 SRMM: paso a paso
+# EP2 SRMM: paso a paso
 
-Este documento adapta la entrega EP3 a la estructura actual del repositorio. Los
+Este documento adapta la entrega EP2 a la estructura actual del repositorio. Los
 valores entre `<ANGULOS>` son datos que deben completarse en cada entorno; no se
 deben inventar ni versionar credenciales.
 
@@ -16,7 +16,7 @@ deben inventar ni versionar credenciales.
   `5433`. RabbitMQ, `infra/`, `services/` y PM2 todavía no existen.
 - El frontend usa `VITE_API_BASE_URL` y MSAL usa variables Vite para cliente,
   tenant, scope y redirect URI.
-- La rama de trabajo es `ep3-rabbitmq-gateway` y `ep1-entrega` marca el estado
+- La rama de trabajo es `ep2-rabbitmq-gateway` y `ep1-entrega` marca el estado
   previo a esta entrega.
 
 ## Reglas comunes
@@ -41,30 +41,30 @@ entrega sin cambiar el comportamiento del BFF ni del frontend.
 
 - Modificar `.gitignore` para excluir `.env.*`, certificados PEM, logs y datos
   persistidos de Docker, manteniendo versionado `.env.example`.
-- Crear este documento en `docs/EP3_PASO_A_PASO.md`.
+- Crear este documento en `docs/EP2_PASO_A_PASO.md`.
 
 ### Comandos
 
 ```powershell
 git tag ep1-entrega
-git switch -c ep3-rabbitmq-gateway
+git switch -c ep2-rabbitmq-gateway
 git status --short --branch
 npm test
 ```
 
-Si el tag o la rama ya existen, usar `git switch ep3-rabbitmq-gateway` y no
+Si el tag o la rama ya existen, usar `git switch ep2-rabbitmq-gateway` y no
 recrearlos.
 
 ### Verificacion
 
-`git status --short --branch` debe mostrar la rama `ep3-rabbitmq-gateway` y
+`git status --short --branch` debe mostrar la rama `ep2-rabbitmq-gateway` y
 ningun secreto local. `npm test` debe conservar todos los tests existentes en
 verde.
 
 ### Commit
 
 ```text
-chore(repo): prepare EP3 workspace
+chore(repo): prepare EP2 workspace
 ```
 
 ## Fase 1: API Gateway, S3/CloudFront, DuckDNS y Entra
@@ -310,7 +310,7 @@ git log --oneline --decorate -10
 ### Commit
 
 ```text
-test(ep3): verify gateway messaging and deployment
+test(ep2): verify gateway messaging and deployment
 ```
 
 ## Entrega y merge
@@ -318,8 +318,8 @@ test(ep3): verify gateway messaging and deployment
 Subir cada commit de fase después de la revisión correspondiente:
 
 ```powershell
-git push -u origin ep3-rabbitmq-gateway
-git push origin ep3-rabbitmq-gateway
+git push -u origin ep2-rabbitmq-gateway
+git push origin ep2-rabbitmq-gateway
 ```
 
 Al finalizar y aprobar la rama:
@@ -327,9 +327,9 @@ Al finalizar y aprobar la rama:
 ```powershell
 git switch main
 git pull --ff-only
-git merge --no-ff ep3-rabbitmq-gateway -m "merge: deliver EP3 gateway and RabbitMQ"
+git merge --no-ff ep2-rabbitmq-gateway -m "merge: deliver EP2 gateway and RabbitMQ"
 git push origin main
 ```
 
 Si el remoto requiere revisión, abrir un Pull Request desde
-`ep3-rabbitmq-gateway` hacia `main` en lugar de hacer el merge local.
+`ep2-rabbitmq-gateway` hacia `main` en lugar de hacer el merge local.
