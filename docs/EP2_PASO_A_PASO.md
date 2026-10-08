@@ -138,6 +138,80 @@ error 403 y 404 de CloudFront que devuelvan `/index.html` con código `200`.
 feat(gateway): add repeatable API Gateway and static hosting
 ```
 
+### Evidencias recomendadas para el informe
+
+Conservar una carpeta fuera de Git, por ejemplo `evidencias/ep2/fase-1/`,
+organizada por fecha. No guardar tokens, contraseñas, cookies ni archivos `.env`.
+Para cada evidencia registrar fecha, región AWS, comando ejecutado y resultado.
+
+1. `01-sts-caller-identity.txt`: salida de
+   `aws sts get-caller-identity`, ocultando cualquier dato que el profesor no
+   requiera.
+2. `02-cloudformation-stack.png`: consola CloudFormation mostrando el stack
+   `srmm-frontend` en estado `CREATE_COMPLETE`.
+3. `03-s3-public-access-block.png`: bloqueo de acceso público y ausencia de
+   objetos públicos en el bucket.
+4. `04-cloudfront-distribution.png`: distribución habilitada, HTTPS, OAC,
+   dominio `cloudfront.net` y respuestas personalizadas 403/404.
+5. `05-api-gateway-routes.png`: rutas `/health` y `/api/{proxy+}`, integración
+   HTTP, stage y JWT authorizer.
+6. `06-api-gateway-authorizer.png`: issuer, audience y scope configurados. Se
+   deben ocultar tokens; nunca capturar un JWT completo.
+7. `07-curl-health.txt`: `curl.exe -i` al `/health` público con código 200.
+8. `08-curl-unauthorized.txt`: `curl.exe -i` a `/api/me` sin token con código
+   401 (o 503 si el BFF aún está deshabilitado localmente).
+9. `09-cloudfront-spa.txt`: navegación directa a una ruta React y código 200.
+10. `10-entra-redirect-uris.png`: pantalla de Entra con localhost y CloudFront
+    como redirect URIs SPA, ocultando identificadores que no sean necesarios.
+
+Una evidencia fuerte combina captura de consola y archivo de texto reproducible.
+Usar nombres secuenciales, conservar el commit desplegado en
+`11-commit.txt` (`git rev-parse HEAD`) y anotar en el informe qué requisito
+demuestra cada archivo.
+
+### Paso a paso en AWS Academy
+
+1. Iniciar el Learner Lab, abrir AWS Console y seleccionar la región definida
+   en `AWS_REGION`. La región debe ser la misma para S3, CloudFront y API
+   Gateway; CloudFront es global, pero sus recursos de origen se crean en la
+   región seleccionada.
+2. En **CloudShell** ejecutar `aws sts get-caller-identity` y guardar la
+   salida. Si se usa una terminal local, configurar las credenciales temporales
+   del laboratorio sin escribirlas en el repositorio.
+3. Crear `infra/.env` a partir de `infra/.env.example` solo localmente.
+   Completar bucket globalmente único, hostname DuckDNS, región, origen BFF,
+   issuer y audience reales. El script rechaza placeholders.
+4. Validar la plantilla sin crear recursos:
+
+   ```powershell
+   aws cloudformation validate-template `
+     --template-body file://infra/cloudformation-static-site.yaml `
+     --region <AWS_REGION>
+   ```
+
+5. Desplegar el stack CloudFormation desde la raíz con el comando de
+   `infra/README.md`. Esperar `CREATE_COMPLETE` y guardar outputs.
+6. Subir una primera versión del frontend con `infra/deploy-frontend.ps1`.
+   Antes, copiar `frontend/.env.example` a `frontend/.env` y configurar la URL
+   real del API Gateway y el scope real de Entra.
+7. En **Microsoft Entra > App registrations > aplicación SPA**, agregar
+   `https://<CLOUDFRONT_DOMAIN>` como Redirect URI y conservar
+   `http://localhost:5173`. Verificar también post logout redirect URI.
+8. En API Gateway ejecutar `infra/deploy-http-api.ps1`. Revisar en consola que
+   el authorizer JWT use exactamente los claims `iss` y `aud` del access token
+   real, y que el scope requerido sea `access_as_user`.
+9. En **EC2 > Security Groups**, mantener SSH restringido y abrir 3001 solo a
+   la fuente necesaria para el diseño elegido. No abrir 5672 ni 15672.
+10. Probar primero `GET /health`, después `/api/me` sin token y finalmente el
+    login desde CloudFront. Solo después de confirmar esas pruebas retirar nginx
+    y Certbot de la EC2.
+
+En AWS Academy pueden faltar permisos para CloudFront, OAC o API Gateway. Si
+ocurre un `AccessDenied`, guardar el mensaje como evidencia, no intentar crear
+roles IAM nuevos y solicitar al profesor una cuenta con permisos o una
+alternativa autorizada. `LabRole` es el rol disponible para servicios que lo
+requieran.
+
 ## Fase 2: RabbitMQ local y primer flujo con DLQ
 
 ### Objetivo
@@ -166,11 +240,34 @@ cd backend
 npm test
 ```
 
+Si Docker Desktop no está iniciado, primero abrirlo y esperar que
+`docker info` responda. Un error
+`dockerDesktopLinuxEngine ... The system cannot find the file specified`
+significa que el daemon local no está disponible todavía; no es evidencia de
+que RabbitMQ haya fallado.
+
 Crear un arriendo con RabbitMQ detenido debe conservar la respuesta normal del
 BFF y registrar el error. Con RabbitMQ activo, el consumidor debe ACKear un
 mensaje valido, reintentar errores recuperables hasta el maximo y enviar los
 errores definitivos a la DLQ. Cada mensaje muerto debe registrar ID, cola y
 motivo.
+
+### Evidencias recomendadas
+
+- `fase-2/01-compose-ps.txt`: `docker compose ps` con PostgreSQL y RabbitMQ
+  saludables.
+- `fase-2/02-rabbit-ports.txt`: evidencia de que el Compose no publica 5672 ni
+  15672 al host.
+- `fase-2/03-config-test.txt`: tests de nombres centralizados y reintentos.
+- `fase-2/04-rental-event.txt`: logs del BFF con publicación confirmada y
+  respuesta HTTP normal del arriendo.
+- `fase-2/05-consumer-ack.txt`: log del consumidor procesando y ACKeando el
+  evento.
+- `fase-2/06-consumer-dlq.txt`: log de reintentos y envío a DLQ con event ID,
+  cola y motivo.
+
+En capturas de RabbitMQ Management ocultar credenciales y no exponer la
+consola a Internet; usar túnel SSH si se necesita mostrarla.
 
 ### Commit
 

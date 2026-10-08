@@ -20,9 +20,26 @@ services:
       timeout: 5s
       retries: 5
 
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: srmm-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-srmm}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-local_dev_only}
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      - srmm-network
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
 networks:
   srmm-network:
     driver: bridge
 
 volumes:
   postgres_data:
+  rabbitmq_data:

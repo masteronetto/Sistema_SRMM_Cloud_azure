@@ -1,0 +1,14 @@
+{
+  "name": "srmm-notificaciones",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "start": "node src/consumer.js",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "amqplib": "^0.10.9",
+    "sistema-srmm": "file:../.."
+  }
+}
