@@ -32,3 +32,26 @@ export function toHistorialMantencionesDto(rows = []) {
     created_at: row.created_at ?? null
   }));
 }
+
+export function toIncidenciaInput(payload = {}, operadorId) {
+  return {
+    maquinaria_id_maquina: Number(payload.maquinaria_id_maquina),
+    operador_id: String(operadorId || payload.operador_id || '').trim(),
+    descripcion: String(payload.descripcion || '').trim(),
+    criticidad: String(payload.criticidad || 'Media').trim(),
+    estado: String(payload.estado || 'Pendiente').trim()
+  };
+}
+
+export function toIncidenciaDto(row = {}) {
+  return {
+    id_incidencia: row.id_incidencia ?? null,
+    maquinaria_id_maquina: row.maquinaria_id_maquina ?? null,
+    operador_id: row.operador_id ?? null,
+    descripcion: row.descripcion ?? '',
+    criticidad: row.criticidad ?? 'Media',
+    estado: row.estado ?? 'Pendiente',
+    fecha: row.fecha ?? null,
+    created_at: row.created_at ?? null
+  };
+}

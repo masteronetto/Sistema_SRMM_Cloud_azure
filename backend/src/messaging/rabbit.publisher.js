@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import amqp from 'amqplib';
-import { rabbitConfig, rentalCreatedTopology } from './rabbit.config.js';
+import { rabbitConfig, rentalCreatedTopology, logisticsStateTopology, criticalIncidentTopology } from './rabbit.config.js';
 
 let connectionPromise;
 let channelPromise;
@@ -39,18 +39,22 @@ export async function declareRentalCreatedTopology(channel) {
 }
 
 export async function publishRentalCreated(arriendo) {
+  return publishEvent(rentalCreatedTopology(), 'arriendo.creado', arriendo);
+}
+
+async function publishEvent(topology, eventType, data) {
   if (!rabbitConfig.enabled) return false;
 
   try {
     const channel = await getConfirmChannel();
-    await declareRentalCreatedTopology(channel);
+    await declareTopology(channel, topology);
     const message = Buffer.from(JSON.stringify({
       eventId: randomUUID(),
-      eventType: 'arriendo.creado',
+      eventType,
       occurredAt: new Date().toISOString(),
-      data: arriendo
+      data
     }));
-    channel.publish(rabbitConfig.rental.exchange, rabbitConfig.rental.routingKey, message, {
+    channel.publish(topology.exchange, topology.routingKey, message, {
       contentType: 'application/json',
       deliveryMode: 2,
       persistent: true
@@ -59,13 +63,36 @@ export async function publishRentalCreated(arriendo) {
     return true;
   } catch (error) {
     console.error('RabbitMQ no disponible; se conserva la respuesta del BFF.', {
-      eventType: 'arriendo.creado',
+      eventType,
       message: error.message
     });
     connectionPromise = undefined;
     channelPromise = undefined;
     return false;
   }
+}
+
+async function declareTopology(channel, topology) {
+  await channel.assertExchange(topology.exchange, 'topic', { durable: true });
+  await channel.assertExchange(topology.deadLetterExchange, 'topic', { durable: true });
+  await channel.assertQueue(topology.deadLetterQueue, { durable: true });
+  await channel.bindQueue(topology.deadLetterQueue, topology.deadLetterExchange, topology.deadLetterRoutingKey);
+  await channel.assertQueue(topology.queue, {
+    durable: true,
+    arguments: {
+      'x-dead-letter-exchange': topology.deadLetterExchange,
+      'x-dead-letter-routing-key': topology.deadLetterRoutingKey
+    }
+  });
+  await channel.bindQueue(topology.queue, topology.exchange, topology.routingKey);
+}
+
+export async function publishLogisticsStateChanged(event) {
+  return publishEvent(logisticsStateTopology(), 'logistica.estado-cambiado', event);
+}
+
+export async function publishCriticalMaintenanceIncident(event) {
+  return publishEvent(criticalIncidentTopology(), 'mantenimiento.incidencia-critica', event);
 }
 
 export function resetRabbitPublisher() {

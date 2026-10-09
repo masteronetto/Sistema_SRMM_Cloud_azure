@@ -12,9 +12,33 @@ export const rabbitConfig = Object.freeze({
     deadLetterExchange: 'srmm.arriendos.dlx',
     deadLetterQueue: 'srmm.notificaciones.arriendo-creado.dlq',
     deadLetterRoutingKey: 'arriendo.creado.dead'
+  }),
+  logistics: Object.freeze({
+    exchange: 'srmm.logistica',
+    queue: 'srmm.notificaciones.logistica-estado',
+    routingKey: 'logistica.estado-cambiado',
+    deadLetterExchange: 'srmm.logistica.dlx',
+    deadLetterQueue: 'srmm.notificaciones.logistica-estado.dlq',
+    deadLetterRoutingKey: 'logistica.estado-cambiado.dead'
+  }),
+  maintenance: Object.freeze({
+    exchange: 'srmm.mantenimientos',
+    queue: 'srmm.tickets.incidencia-critica',
+    routingKey: 'mantenimiento.incidencia-critica',
+    deadLetterExchange: 'srmm.mantenimientos.dlx',
+    deadLetterQueue: 'srmm.tickets.incidencia-critica.dlq',
+    deadLetterRoutingKey: 'mantenimiento.incidencia-critica.dead'
   })
 });
 
 export function rentalCreatedTopology(config = rabbitConfig) {
   return config.rental;
+}
+
+export function logisticsStateTopology(config = rabbitConfig) {
+  return config.logistics;
+}
+
+export function criticalIncidentTopology(config = rabbitConfig) {
+  return config.maintenance;
 }

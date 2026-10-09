@@ -71,9 +71,11 @@ chore(repo): prepare EP2 workspace
 
 ### Objetivo
 
-Reemplazar nginx como entrada publica por HTTP API Gateway, publicar el build
-del frontend en un bucket S3 privado servido mediante CloudFront con OAC y
-mantener la EC2 como origen del BFF.
+La arquitectura objetivo separa las entradas: API Gateway reemplaza nginx
+únicamente como entrada pública del BFF, mientras nginx continúa sirviendo el
+frontend en EC2. S3 quedó creado como artefacto preparado, pero CloudFront/OAC
+no pudo habilitarse porque el rol AWS Academy no incluye
+`cloudfront:ListDistributions` ni `cloudfront:CreateOriginAccessControl`.
 
 ### Archivos
 
@@ -100,9 +102,9 @@ aws cloudfront create-invalidation --distribution-id <CLOUDFRONT_DISTRIBUTION_ID
 
 Para HTTP API Gateway, configurar `ANY /api/{proxy+}` al origen
 `http://<DUCKDNS_HOST>:3001/api/{proxy}` y `GET /health` sin autorizador.
-El endpoint administrativo de RabbitMQ se añade en la Fase 4. CORS debe
-permitir solo `https://<CLOUDFRONT_DOMAIN>` y, durante desarrollo,
-`http://localhost:5173`.
+El endpoint administrativo de RabbitMQ se añade en la Fase 4. CORS debe permitir `https://<DUCKDNS_HOST>` y, durante desarrollo,
+`http://localhost:5173`. El frontend productivo permanece en
+`https://<DUCKDNS_HOST>` servido por nginx.
 
 ### Obtener issuer y audience reales
 
@@ -115,7 +117,7 @@ de ese token son los valores del JWT authorizer. Los tokens v1 usan normalmente
 versión emitida por la app `SRMM BFF API` según su manifiesto, sin adivinar.
 Exigir `access_as_user` en `scope`.
 
-En Entra agregar la URL HTTPS de CloudFront como Redirect URI de tipo SPA y
+En Entra agregar la URL HTTPS de DuckDNS como Redirect URI de tipo SPA y
 mantener `http://localhost:5173` para desarrollo. Registrar también la URL de
 logout si el flujo la utiliza.
 
@@ -129,8 +131,10 @@ curl.exe -i https://<API_ID>.execute-api.<AWS_REGION>.amazonaws.com/api/me
 La primera llamada debe ser `200`; la segunda, sin Bearer, debe ser `401` (o
 `503` si el BFF local sigue deliberadamente sin Azure configurado). Con un
 token real, issuer, audience y scope correctos, `/api/me` debe responder `200`.
-La navegación directa a una ruta React debe funcionar mediante respuestas de
-error 403 y 404 de CloudFront que devuelvan `/index.html` con código `200`.
+La navegación directa a una ruta React debe funcionar mediante el fallback
+configurado en nginx. La respuesta `/health` de nginx no sustituye la
+verificación de API Gateway: el health check del BFF se valida contra el URL
+`execute-api`.
 
 ### Commit
 
@@ -276,23 +280,28 @@ consola a Internet; usar túnel SSH si se necesita mostrarla.
 feat(rabbit): publish rental notifications with dead letter handling
 ```
 
-## Fase 3: resto de flujos y consumidores
+## Fase 3: logística, incidencias y consumidores
 
 ### Objetivo
 
 Añadir notificaciones por cambio de estado logístico e incidencia crítica de
 mantenimiento. La exportación CSV queda opcional y solo se implementa si el
-tiempo de la entrega lo permite.
+tiempo de la entrega lo permite. Esta fase ya está implementada en la rama:
+`crear` y `actualizar` de logística publican `logistica.estado-cambiado`; el
+endpoint `POST /api/mantenimientos/incidencias` registra incidencias y publica
+solo las de criticidad `Alta`.
 
 ### Archivos
 
 - Extender el modulo central de nombres y declaraciones.
 - Integrar productores en los servicios de logística y mantenimientos.
-- Crear consumidores agrupados por dominio funcional y sus tests.
+- Consumir los tres tipos de evento con ACK manual, reintentos por
+  `x-retry-count` y DLQ independiente por topología.
+- Mantener la respuesta síncrona aunque RabbitMQ esté apagado.
 
 ### Verificacion
 
-Ejecutar `npm test`, publicar cada evento con el broker activo y comprobar ACK,
+Ejecutar `npm test` y `npm test --prefix services/notificaciones`, publicar cada evento con el broker activo y comprobar ACK,
 reintento y DLQ por flujo. Con el broker apagado, las respuestas síncronas de
 los dominios deben continuar sin cambios.
 
