@@ -370,20 +370,21 @@ Compose en la EC2 existente.
 
 ### Archivos
 
-- Crear `ecosystem.config.cjs` con los tres procesos.
-- Crear script de actualización DuckDNS que lea el token solo desde una
-  variable de entorno y pueda ejecutarse con cron o systemd.
+- `ecosystem.config.cjs` administra los tres procesos con PM2: BFF,
+  notificaciones y rabbit-admin. Cada proceso usa su propio `cwd`, por lo que
+  `dotenv` lee el `.env` local del servicio.
+- `scripts/update-duckdns.sh` actualiza DuckDNS usando el token únicamente
+  desde `DUCKDNS_TOKEN`.
 - Documentar instalación de Docker/Compose en Amazon Linux 2023, despliegue,
   variables y rollback.
 
 ### Comandos y seguridad
 
-```powershell
-docker compose up -d postgres rabbitmq
+```bash
+docker compose up -d rabbitmq
 pm2 start ecosystem.config.cjs
 pm2 save
-sudo systemctl disable --now nginx
-sudo systemctl disable --now certbot-renew.timer
+sudo systemctl enable --now nginx
 ```
 
 El Security Group permite solo SSH con origen restringido, puerto 3001 según
@@ -391,6 +392,25 @@ la topología elegida y el puerto del gateway si fuera estrictamente necesario.
 No abrir `5672` ni `15672`. La consola RabbitMQ se usa mediante túnel SSH.
 No crear roles IAM nuevos en Academy: usar `LabRole` cuando el servicio lo
 requiera.
+
+En EC2, desde la raíz del repositorio, ejecutar:
+
+```bash
+chmod +x scripts/update-duckdns.sh
+export DUCKDNS_TOKEN='<token-no-se-versiona>'
+export DUCKDNS_DOMAIN='srmm'
+./scripts/update-duckdns.sh
+
+cd services/rabbit-admin && npm ci --omit=dev && cd ../..
+cd services/notificaciones && npm ci --omit=dev && cd ../..
+cd backend && npm ci --omit=dev && cd ..
+pm2 start ecosystem.config.cjs
+pm2 save
+```
+
+No ejecutar `docker compose up -d` sin especificar el servicio en esta fase:
+`rabbit-admin` se administra mediante PM2 para evitar ejecutar dos instancias
+del mismo servicio en el puerto `3002`.
 
 ### Verificacion
 
