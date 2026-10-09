@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "amqplib": "^0.10.9",
+    "dotenv": "^16.6.1",
     "sistema-srmm": "file:../.."
   }
 }
