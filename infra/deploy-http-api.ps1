@@ -27,10 +27,17 @@ if ([string]::IsNullOrWhiteSpace($apiId) -or $apiId -eq 'None') {
   if ($LASTEXITCODE -ne 0) { throw 'No se pudo actualizar CORS de la HTTP API.' }
 }
 
-$integrationId = aws apigatewayv2 get-integrations --api-id $apiId --region $region --query "Items[?IntegrationUri=='$origin'].IntegrationId | [0]" --output text
-if ([string]::IsNullOrWhiteSpace($integrationId) -or $integrationId -eq 'None') {
-  $integrationId = aws apigatewayv2 create-integration --api-id $apiId --integration-type HTTP_PROXY --integration-method ANY --integration-uri $origin --payload-format-version 1.0 --region $region --query IntegrationId --output text
+$apiIntegrationId = aws apigatewayv2 get-integrations --api-id $apiId --region $region --query "Items[?IntegrationUri=='$origin'].IntegrationId | [0]" --output text
+if ([string]::IsNullOrWhiteSpace($apiIntegrationId) -or $apiIntegrationId -eq 'None') {
+  $apiIntegrationId = aws apigatewayv2 create-integration --api-id $apiId --integration-type HTTP_PROXY --integration-method ANY --integration-uri $origin --payload-format-version 1.0 --region $region --query IntegrationId --output text
   if ($LASTEXITCODE -ne 0) { throw 'No se pudo crear la integracion HTTP.' }
+}
+
+$healthOrigin = "$origin/health"
+$healthIntegrationId = aws apigatewayv2 get-integrations --api-id $apiId --region $region --query "Items[?IntegrationUri=='$healthOrigin'].IntegrationId | [0]" --output text
+if ([string]::IsNullOrWhiteSpace($healthIntegrationId) -or $healthIntegrationId -eq 'None') {
+  $healthIntegrationId = aws apigatewayv2 create-integration --api-id $apiId --integration-type HTTP_PROXY --integration-method GET --integration-uri $healthOrigin --payload-format-version 1.0 --region $region --query IntegrationId --output text
+  if ($LASTEXITCODE -ne 0) { throw 'No se pudo crear la integracion HTTP de health.' }
 }
 
 $authorizerId = aws apigatewayv2 get-authorizers --api-id $apiId --region $region --query "Items[?Name=='entra-jwt'].AuthorizerId | [0]" --output text
@@ -39,7 +46,7 @@ if ([string]::IsNullOrWhiteSpace($authorizerId) -or $authorizerId -eq 'None') {
   if ($LASTEXITCODE -ne 0) { throw 'No se pudo crear el JWT authorizer.' }
 }
 
-function Ensure-Route([string] $routeKey, [string] $target, [string] $authorizationType, [string] $authorizer, [string[]] $scopes) {
+function Ensure-Route([string] $routeKey, [string] $integrationId, [string] $authorizationType, [string] $authorizer, [string[]] $scopes) {
   $escapedRoute = $routeKey.Replace("'", "''")
   $routeId = aws apigatewayv2 get-routes --api-id $apiId --region $region --query "Items[?RouteKey=='$escapedRoute'].RouteId | [0]" --output text
   $arguments = @('--api-id', $apiId, '--route-key', $routeKey, '--target', "integrations/$integrationId", '--region', $region)
@@ -56,8 +63,8 @@ function Ensure-Route([string] $routeKey, [string] $target, [string] $authorizat
   if ($LASTEXITCODE -ne 0) { throw "No se pudo configurar la ruta $routeKey." }
 }
 
-Ensure-Route 'ANY /api/{proxy+}' 'integrations' 'JWT' $authorizerId @($scope)
-Ensure-Route 'GET /health' 'integrations' 'NONE' '' @()
+Ensure-Route 'ANY /api/{proxy+}' $apiIntegrationId 'JWT' $authorizerId @($scope)
+Ensure-Route 'GET /health' $healthIntegrationId 'NONE' '' @()
 
 $stageName = if ([string]::IsNullOrWhiteSpace($env:API_STAGE_NAME)) { '$default' } else { $env:API_STAGE_NAME }
 $stageId = aws apigatewayv2 get-stages --api-id $apiId --region $region --query "Items[?StageName=='$stageName'].StageName | [0]" --output text
