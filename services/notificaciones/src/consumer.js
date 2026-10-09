@@ -96,7 +96,7 @@ export async function startConsumer() {
   console.info(`Consumidor de notificaciones activo en ${config.topologies.map((topology) => topology.queue).join(', ')}.`);
 }
 
-if (process.argv[1] && process.argv[1].endsWith('consumer.js')) {
+if ((process.argv[1] && process.argv[1].endsWith('consumer.js')) || process.env.pm_id !== undefined) {
   startConsumer().catch((error) => {
     console.error('No se pudo iniciar el consumidor de notificaciones.', {
       name: error.name,
