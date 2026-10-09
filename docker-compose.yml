@@ -40,6 +40,26 @@ services:
       timeout: 5s
       retries: 10
 
+  rabbit-admin:
+    build:
+      context: ./services/rabbit-admin
+    container_name: srmm-rabbit-admin
+    environment:
+      RABBIT_ADMIN_PORT: 3002
+      RABBITMQ_URL: amqp://${RABBITMQ_USER:-srmm}:${RABBITMQ_PASSWORD:-local_dev_only}@rabbitmq:5672
+      AZURE_AUTH_ENABLED: ${AZURE_AUTH_ENABLED:-false}
+      AZURE_TENANT_ID: ${AZURE_TENANT_ID:-}
+      AZURE_API_AUDIENCE: ${AZURE_API_AUDIENCE:-}
+      AZURE_REQUIRED_SCOPE: ${AZURE_REQUIRED_SCOPE:-}
+      FRONTEND_ORIGIN: ${FRONTEND_ORIGIN:-http://localhost:5173}
+    ports:
+      - "127.0.0.1:3002:3002"
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - srmm-network
+
 networks:
   srmm-network:
     driver: bridge

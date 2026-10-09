@@ -328,12 +328,32 @@ JWT del BFF y restringida al rol `Administrador`.
 - Compartir el middleware de autenticación mediante un pequeño módulo común,
   evitando duplicar reglas de issuer, audience y JWKS.
 
+La implementación local queda disponible en el puerto `3002`, publicado solo
+en loopback por Compose. Sus operaciones son:
+
+```text
+POST   /queues
+GET    /queues/:queue
+DELETE /queues/:queue
+POST   /exchanges
+DELETE /exchanges/:exchange
+POST   /bindings
+DELETE /bindings
+```
+
+Todas requieren Bearer token válido, el scope configurado y el App Role
+`Administrador`. Rabbit-admin no debe exponerse directamente a Internet:
+cuando se publique en EC2, se accede mediante un túnel SSH o una ruta
+administrativa explícitamente protegida.
+
 ### Verificacion
 
 Validar nombres no vacíos, caracteres inválidos, tipos de exchange no
 permitidos y configuraciones inconsistentes con respuestas `400`. Sin token:
 `401`; con token sin `Administrador`: `403`; con rol correcto: ejecutar la
-operación mockeada y obtener `2xx`.
+operación y obtener `2xx`. En AWS Academy configurar las variables
+`AZURE_TENANT_ID`, `AZURE_API_AUDIENCE`, `AZURE_REQUIRED_SCOPE` y
+`AZURE_AUTH_ENABLED=true` en el entorno del servicio; no incluirlas en Git.
 
 ### Commit
 
