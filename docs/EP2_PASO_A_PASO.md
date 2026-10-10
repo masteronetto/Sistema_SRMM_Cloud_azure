@@ -67,15 +67,15 @@ verde.
 chore(repo): prepare EP2 workspace
 ```
 
-## Fase 1: API Gateway, S3/CloudFront, DuckDNS y Entra
+## Fase 1: API Gateway, DuckDNS, nginx y Entra
 
 ### Objetivo
 
-La arquitectura objetivo separa las entradas: API Gateway reemplaza nginx
-únicamente como entrada pública del BFF, mientras nginx continúa sirviendo el
-frontend en EC2. S3 quedó creado como artefacto preparado, pero CloudFront/OAC
-no pudo habilitarse porque el rol AWS Academy no incluye
-`cloudfront:ListDistributions` ni `cloudfront:CreateOriginAccessControl`.
+La arquitectura final separa las entradas: nginx sirve el frontend React por
+HTTPS desde EC2 y API Gateway publica únicamente el BFF. DuckDNS proporciona
+el nombre estable de la instancia. S3 y CloudFront quedan como componentes
+preparados, pero no se utilizan en producción porque el rol de AWS Academy no
+incluye los permisos necesarios para administrar CloudFront/OAC.
 
 ### Archivos
 
@@ -85,8 +85,8 @@ no pudo habilitarse porque el rol AWS Academy no incluye
   issuer, audience, scope, origen CloudFront y hostname DuckDNS.
 - Actualizar `frontend/.env.example` y el cliente Vite para separar la URL de
   API Gateway del fallback local.
-- Crear un script de build, upload e invalidacion de CloudFront.
-- Documentar el apagado de nginx y Certbot en EC2.
+- Crear un script reproducible para API Gateway.
+- Mantener nginx y Certbot activos en EC2 para servir el frontend.
 
 ### Comandos
 
@@ -96,15 +96,19 @@ aws configure list
 Copy-Item infra\.env.example infra\.env
 cd frontend
 npm run build
-aws s3 sync dist s3://<FRONTEND_BUCKET> --delete
-aws cloudfront create-invalidation --distribution-id <CLOUDFRONT_DISTRIBUTION_ID> --paths "/*"
+curl.exe -i https://<API_ID>.execute-api.<AWS_REGION>.amazonaws.com/health
 ```
 
-Para HTTP API Gateway, configurar `ANY /api/{proxy+}` al origen
-`http://<DUCKDNS_HOST>:3001/api/{proxy}` y `GET /health` sin autorizador.
-El endpoint administrativo de RabbitMQ se añade en la Fase 4. CORS debe permitir `https://<DUCKDNS_HOST>` y, durante desarrollo,
+Para HTTP API Gateway, configurar dos integraciones al BFF:
+
+- `ANY /api/{proxy+}` hacia `http://<DUCKDNS_HOST>:3001`.
+- `GET /health` hacia `http://<DUCKDNS_HOST>:3001/health`, sin autorizador.
+
+El endpoint administrativo de RabbitMQ se añade en la Fase 4. CORS debe
+permitir `https://<DUCKDNS_HOST>` y, durante desarrollo,
 `http://localhost:5173`. El frontend productivo permanece en
-`https://<DUCKDNS_HOST>` servido por nginx.
+`https://<DUCKDNS_HOST>` servido por nginx; API Gateway se utiliza para las
+llamadas del BFF.
 
 ### Obtener issuer y audience reales
 
@@ -151,21 +155,17 @@ Para cada evidencia registrar fecha, región AWS, comando ejecutado y resultado.
 1. `01-sts-caller-identity.txt`: salida de
    `aws sts get-caller-identity`, ocultando cualquier dato que el profesor no
    requiera.
-2. `02-cloudformation-stack.png`: consola CloudFormation mostrando el stack
-   `srmm-frontend` en estado `CREATE_COMPLETE`.
-3. `03-s3-public-access-block.png`: bloqueo de acceso público y ausencia de
-   objetos públicos en el bucket.
-4. `04-cloudfront-distribution.png`: distribución habilitada, HTTPS, OAC,
-   dominio `cloudfront.net` y respuestas personalizadas 403/404.
-5. `05-api-gateway-routes.png`: rutas `/health` y `/api/{proxy+}`, integración
-   HTTP, stage y JWT authorizer.
-6. `06-api-gateway-authorizer.png`: issuer, audience y scope configurados. Se
-   deben ocultar tokens; nunca capturar un JWT completo.
-7. `07-curl-health.txt`: `curl.exe -i` al `/health` público con código 200.
-8. `08-curl-unauthorized.txt`: `curl.exe -i` a `/api/me` sin token con código
-   401 (o 503 si el BFF aún está deshabilitado localmente).
-9. `09-cloudfront-spa.txt`: navegación directa a una ruta React y código 200.
-10. `10-entra-redirect-uris.png`: pantalla de Entra con localhost y CloudFront
+2. `02-duckdns-nginx-https.png`: dominio DuckDNS, certificado y frontend
+    servido por nginx mediante HTTPS.
+3. `03-api-gateway-routes.png`: rutas `/health` y `/api/{proxy+}`, integración
+    HTTP, stage y JWT authorizer.
+4. `04-api-gateway-authorizer.png`: issuer, audience y scope configurados. Se
+    deben ocultar tokens; nunca capturar un JWT completo.
+5. `05-curl-health.txt`: `curl.exe -i` al `/health` público con código 200.
+6. `06-curl-unauthorized.txt`: `curl.exe -i` a `/api/me` sin token con código
+    401 (o 503 si el BFF aún está deshabilitado localmente).
+7. `07-nginx-spa.txt`: navegación directa a una ruta React y código 200.
+8. `08-entra-redirect-uris.png`: pantalla de Entra con localhost y DuckDNS
     como redirect URIs SPA, ocultando identificadores que no sean necesarios.
 
 Una evidencia fuerte combina captura de consola y archivo de texto reproducible.
@@ -176,9 +176,7 @@ demuestra cada archivo.
 ### Paso a paso en AWS Academy
 
 1. Iniciar el Learner Lab, abrir AWS Console y seleccionar la región definida
-   en `AWS_REGION`. La región debe ser la misma para S3, CloudFront y API
-   Gateway; CloudFront es global, pero sus recursos de origen se crean en la
-   región seleccionada.
+   en `AWS_REGION`. Usar la misma región para RDS, EC2 y API Gateway.
 2. En **CloudShell** ejecutar `aws sts get-caller-identity` y guardar la
    salida. Si se usa una terminal local, configurar las credenciales temporales
    del laboratorio sin escribirlas en el repositorio.
@@ -195,20 +193,19 @@ demuestra cada archivo.
 
 5. Desplegar el stack CloudFormation desde la raíz con el comando de
    `infra/README.md`. Esperar `CREATE_COMPLETE` y guardar outputs.
-6. Subir una primera versión del frontend con `infra/deploy-frontend.ps1`.
-   Antes, copiar `frontend/.env.example` a `frontend/.env` y configurar la URL
-   real del API Gateway y el scope real de Entra.
+6. Configurar `frontend/.env` con la URL real del API Gateway y el scope real
+   de Entra. Construir el frontend y publicarlo en la ruta servida por nginx.
 7. En **Microsoft Entra > App registrations > aplicación SPA**, agregar
-   `https://<CLOUDFRONT_DOMAIN>` como Redirect URI y conservar
+   `https://<DUCKDNS_HOST>` como Redirect URI y conservar
    `http://localhost:5173`. Verificar también post logout redirect URI.
 8. En API Gateway ejecutar `infra/deploy-http-api.ps1`. Revisar en consola que
    el authorizer JWT use exactamente los claims `iss` y `aud` del access token
    real, y que el scope requerido sea `access_as_user`.
 9. En **EC2 > Security Groups**, mantener SSH restringido y abrir 3001 solo a
    la fuente necesaria para el diseño elegido. No abrir 5672 ni 15672.
-10. Probar primero `GET /health`, después `/api/me` sin token y finalmente el
-    login desde CloudFront. Solo después de confirmar esas pruebas retirar nginx
-    y Certbot de la EC2.
+10. Probar primero `GET /health` mediante API Gateway, después `/api/me` sin
+    token y finalmente el login desde `https://<DUCKDNS_HOST>`. Mantener nginx
+    y Certbot activos, porque continúan sirviendo el frontend.
 
 En AWS Academy pueden faltar permisos para CloudFront, OAC o API Gateway. Si
 ocurre un `AccessDenied`, guardar el mensaje como evidencia, no intentar crear
@@ -365,8 +362,9 @@ feat(rabbit-admin): add protected RabbitMQ management API
 
 ### Objetivo
 
-Ejecutar BFF, notificaciones y rabbit-admin mediante PM2, y RabbitMQ mediante
-Compose en la EC2 existente.
+Ejecutar BFF, notificaciones y rabbit-admin mediante PM2, RabbitMQ mediante
+Compose y el frontend React mediante nginx en la EC2 existente. API Gateway
+publica el BFF sin reemplazar nginx.
 
 ### Archivos
 
@@ -415,8 +413,9 @@ del mismo servicio en el puerto `3002`.
 ### Verificacion
 
 Comprobar `pm2 status`, `curl http://localhost:3001/health`, el health check
-del Compose y el acceso externo únicamente por API Gateway. Verificar que
-RabbitMQ no responde desde Internet en 5672/15672.
+del Compose, `https://<DUCKDNS_HOST>` y el acceso público del BFF únicamente
+por API Gateway. Verificar que RabbitMQ no responde desde Internet en
+5672/15672 y que nginx permanece activo.
 
 ### Commit
 
@@ -431,28 +430,54 @@ chore(deploy): document EC2 PM2 and DuckDNS deployment
 Cerrar la entrega con pruebas repetibles, revisión de secretos y evidencia de
 los flujos síncronos y asíncronos.
 
-### Comandos
+### Comandos de validación
 
 ```powershell
-git status --short
 npm test
-cd frontend
-npm run build
-cd ..
+npm test --prefix services/notificaciones
+npm test --prefix services/rabbit-admin
 docker compose config
 git diff --check
+git status --short
 git log --oneline --decorate -10
+```
+
+En EC2:
+
+```bash
+pm2 status
+sudo systemctl is-enabled pm2-ec2-user
+sudo systemctl is-active pm2-ec2-user
+sudo systemctl is-active nginx
+sudo nginx -t
+docker compose ps
+curl -s http://127.0.0.1:3001/health
+```
+
+Desde el equipo local:
+
+```powershell
+curl.exe -i https://<API_ID>.execute-api.<AWS_REGION>.amazonaws.com/health
+curl.exe -i https://<API_ID>.execute-api.<AWS_REGION>.amazonaws.com/api/me
+curl.exe -I https://<DUCKDNS_HOST>
 ```
 
 ### Lista de evidencia
 
-- API Gateway: health público, ruta protegida `401` sin token y `200` con token
-  válido.
-- CloudFront: carga HTTPS, login MSAL y refresh de ruta React.
-- RabbitMQ: flujo de arriendo, ACK, reintento y DLQ.
-- Rabbit-admin: validación, JWT y rol Administrador.
-- EC2: PM2, Compose, DuckDNS y puertos no publicados.
-- `git status` sin `.env`, claves, tokens ni logs.
+1. API Gateway: rutas `GET /health` y `ANY /api/{proxy+}`, integraciones y
+   authorizer JWT.
+2. API Gateway: health público con `200` y ruta protegida con `401` sin token.
+3. Frontend por nginx: HTTPS, login MSAL y navegación directa a una ruta React.
+4. RabbitMQ: exchanges, queues, bindings, consumidor activo, publicación,
+   entrega, ACK y cola vacía.
+5. Rabbit-admin: validación, `401`, `403` y operación autorizada.
+6. RDS: conexión privada desde EC2 y variables sin secretos visibles.
+7. EC2: PM2, systemd, nginx, Compose saludable y puertos RabbitMQ en loopback.
+8. Pruebas finales, `git status` limpio de `.env`, claves, tokens y logs.
+
+Guardar las evidencias fuera de Git, organizadas por fase y fecha. Cada
+archivo debe registrar el comando, fecha, región AWS y requisito demostrado.
+Nunca guardar contraseñas, tokens, cookies, claves PEM o archivos `.env`.
 
 ### Commit
 
@@ -480,3 +505,50 @@ git push origin main
 
 Si el remoto requiere revisión, abrir un Pull Request desde
 `ep2-rabbitmq-gateway` hacia `main` en lugar de hacer el merge local.
+
+## Diagrama de arquitectura final
+
+```text
+                           Usuarios
+                  ┌────────────┴────────────┐
+                  │                         │
+       Navegador / frontend             Llamadas API
+                  │                         │
+                  ▼                         ▼
+       https://srmm.duckdns.org       API Gateway HTTP API
+                  │                    agz783uwu6
+                  ▼                         │
+              nginx :443                    │
+       sirve frontend React                │
+                  │                         │
+                  └──────────────┬──────────┘
+                                 │
+                                 ▼
+                         BFF Express :3001
+                       PM2 - srmm-bff
+                          │         │
+                          │         └──────────────► RDS PostgreSQL
+                          │
+                          └────────► RabbitMQ :5672
+                                      Docker Compose
+                                             │
+                                             ▼
+                              PM2 - srmm-notificaciones
+                              ACK / reintentos / DLQ
+
+                   PM2 - srmm-rabbit-admin :3002
+                   acceso local o túnel SSH protegido
+```
+
+### Flujo de una solicitud y un evento
+
+1. El usuario carga el frontend desde nginx mediante HTTPS y DuckDNS.
+2. El frontend envía las llamadas del sistema a API Gateway.
+3. API Gateway valida JWT y scope en las rutas protegidas.
+4. API Gateway reenvía `/api/{proxy+}` al BFF en el puerto `3001`.
+5. El BFF consulta o actualiza RDS y publica eventos en RabbitMQ.
+6. El consumidor recibe el evento, ejecuta la notificación y confirma con
+   ACK manual.
+7. Los errores recuperables usan reintentos; los definitivos se envían a la
+   DLQ correspondiente.
+8. RabbitMQ y `rabbit-admin` no se exponen directamente a Internet.

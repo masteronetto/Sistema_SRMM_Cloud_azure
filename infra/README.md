@@ -1,7 +1,7 @@
 # Infraestructura de EP2
 
-Esta carpeta contiene artefactos reproducibles para sustituir nginx como
-entrada pública y publicar el frontend React de forma segura.
+Esta carpeta contiene artefactos reproducibles para publicar el BFF mediante
+API Gateway. nginx continúa sirviendo el frontend React por HTTPS desde EC2.
 
 ## Requisitos
 
@@ -14,7 +14,7 @@ entrada pública y publicar el frontend React de forma segura.
 - Valores reales de issuer y audience obtenidos desde un access token emitido
   para la API. No usar el client ID del frontend como audience por suposición.
 
-## Frontend privado detrás de CloudFront
+## Frontend y CloudFront opcional
 
 La plantilla `cloudformation-static-site.yaml` crea:
 
@@ -35,9 +35,10 @@ aws cloudformation deploy `
   --region <AWS_REGION>
 ```
 
-Registrar el output `CloudFrontDomainName` como `CLOUDFRONT_DOMAIN` y como
-redirect URI SPA en Microsoft Entra. Mantener `http://localhost:5173` para
-desarrollo.
+En la arquitectura final el frontend se sirve mediante nginx en EC2 y
+CloudFront queda como componente preparado, pero no utilizado, debido a las
+restricciones del rol AWS Academy. La URL de producción y el redirect URI SPA
+son `https://<DUCKDNS_HOST>`. Mantener `http://localhost:5173` para desarrollo.
 
 ## HTTP API Gateway
 
@@ -82,8 +83,9 @@ API Gateway:
 El script ejecuta `npm run build`, sincroniza `frontend/dist` al bucket privado
 y solicita una invalidación `/*`.
 
-## Retiro de nginx
+## nginx y seguridad de red
 
-Cuando CloudFront y API Gateway estén verificados, deshabilitar nginx y
-Certbot en la EC2. No hacerlo antes de comprobar el endpoint `/health` público.
-El puerto 3001 debe limitarse al origen necesario según la topología elegida.
+Mantener nginx y Certbot activos en EC2 para servir el frontend por HTTPS.
+API Gateway publica el BFF, mientras el puerto 3001 debe limitarse al origen
+necesario según la topología elegida. No exponer RabbitMQ en 5672/15672 ni
+`rabbit-admin` en 3002 directamente a Internet.
