@@ -146,33 +146,6 @@ verificación de API Gateway: el health check del BFF se valida contra el URL
 feat(gateway): add repeatable API Gateway and static hosting
 ```
 
-### Evidencias recomendadas para el informe
-
-Conservar una carpeta fuera de Git, por ejemplo `evidencias/ep2/fase-1/`,
-organizada por fecha. No guardar tokens, contraseñas, cookies ni archivos `.env`.
-Para cada evidencia registrar fecha, región AWS, comando ejecutado y resultado.
-
-1. `01-sts-caller-identity.txt`: salida de
-   `aws sts get-caller-identity`, ocultando cualquier dato que el profesor no
-   requiera.
-2. `02-duckdns-nginx-https.png`: dominio DuckDNS, certificado y frontend
-    servido por nginx mediante HTTPS.
-3. `03-api-gateway-routes.png`: rutas `/health` y `/api/{proxy+}`, integración
-    HTTP, stage y JWT authorizer.
-4. `04-api-gateway-authorizer.png`: issuer, audience y scope configurados. Se
-    deben ocultar tokens; nunca capturar un JWT completo.
-5. `05-curl-health.txt`: `curl.exe -i` al `/health` público con código 200.
-6. `06-curl-unauthorized.txt`: `curl.exe -i` a `/api/me` sin token con código
-    401 (o 503 si el BFF aún está deshabilitado localmente).
-7. `07-nginx-spa.txt`: navegación directa a una ruta React y código 200.
-8. `08-entra-redirect-uris.png`: pantalla de Entra con localhost y DuckDNS
-    como redirect URIs SPA, ocultando identificadores que no sean necesarios.
-
-Una evidencia fuerte combina captura de consola y archivo de texto reproducible.
-Usar nombres secuenciales, conservar el commit desplegado en
-`11-commit.txt` (`git rev-parse HEAD`) y anotar en el informe qué requisito
-demuestra cada archivo.
-
 ### Paso a paso en AWS Academy
 
 1. Iniciar el Learner Lab, abrir AWS Console y seleccionar la región definida
@@ -208,10 +181,8 @@ demuestra cada archivo.
     y Certbot activos, porque continúan sirviendo el frontend.
 
 En AWS Academy pueden faltar permisos para CloudFront, OAC o API Gateway. Si
-ocurre un `AccessDenied`, guardar el mensaje como evidencia, no intentar crear
-roles IAM nuevos y solicitar al profesor una cuenta con permisos o una
-alternativa autorizada. `LabRole` es el rol disponible para servicios que lo
-requieran.
+ocurre un `AccessDenied`, no intentar crear roles IAM nuevos. `LabRole` es el
+rol disponible para servicios que lo requieran.
 
 ## Fase 2: RabbitMQ local y primer flujo con DLQ
 
@@ -245,31 +216,14 @@ npm test
 Si Docker Desktop no está iniciado, primero abrirlo y esperar que
 `docker info` responda. Un error
 `dockerDesktopLinuxEngine ... The system cannot find the file specified`
-significa que el daemon local no está disponible todavía; no es evidencia de
-que RabbitMQ haya fallado.
+significa que el daemon local no está disponible todavía; se debe iniciar
+Docker antes de continuar.
 
 Crear un arriendo con RabbitMQ detenido debe conservar la respuesta normal del
 BFF y registrar el error. Con RabbitMQ activo, el consumidor debe ACKear un
 mensaje valido, reintentar errores recuperables hasta el maximo y enviar los
 errores definitivos a la DLQ. Cada mensaje muerto debe registrar ID, cola y
 motivo.
-
-### Evidencias recomendadas
-
-- `fase-2/01-compose-ps.txt`: `docker compose ps` con PostgreSQL y RabbitMQ
-  saludables.
-- `fase-2/02-rabbit-ports.txt`: evidencia de que el Compose local solo publica
-  `127.0.0.1:5672` y `127.0.0.1:15672`, nunca una interfaz pública.
-- `fase-2/03-config-test.txt`: tests de nombres centralizados y reintentos.
-- `fase-2/04-rental-event.txt`: logs del BFF con publicación confirmada y
-  respuesta HTTP normal del arriendo.
-- `fase-2/05-consumer-ack.txt`: log del consumidor procesando y ACKeando el
-  evento.
-- `fase-2/06-consumer-dlq.txt`: log de reintentos y envío a DLQ con event ID,
-  cola y motivo.
-
-En capturas de RabbitMQ Management ocultar credenciales y no exponer la
-consola a Internet; usar túnel SSH si se necesita mostrarla.
 
 ### Commit
 
@@ -427,7 +381,7 @@ chore(deploy): document EC2 PM2 and DuckDNS deployment
 
 ### Objetivo
 
-Cerrar la entrega con pruebas repetibles, revisión de secretos y evidencia de
+Cerrar la entrega con pruebas repetibles, revisión de secretos y validación de
 los flujos síncronos y asíncronos.
 
 ### Comandos de validación
@@ -461,23 +415,6 @@ curl.exe -i https://<API_ID>.execute-api.<AWS_REGION>.amazonaws.com/health
 curl.exe -i https://<API_ID>.execute-api.<AWS_REGION>.amazonaws.com/api/me
 curl.exe -I https://<DUCKDNS_HOST>
 ```
-
-### Lista de evidencia
-
-1. API Gateway: rutas `GET /health` y `ANY /api/{proxy+}`, integraciones y
-   authorizer JWT.
-2. API Gateway: health público con `200` y ruta protegida con `401` sin token.
-3. Frontend por nginx: HTTPS, login MSAL y navegación directa a una ruta React.
-4. RabbitMQ: exchanges, queues, bindings, consumidor activo, publicación,
-   entrega, ACK y cola vacía.
-5. Rabbit-admin: validación, `401`, `403` y operación autorizada.
-6. RDS: conexión privada desde EC2 y variables sin secretos visibles.
-7. EC2: PM2, systemd, nginx, Compose saludable y puertos RabbitMQ en loopback.
-8. Pruebas finales, `git status` limpio de `.env`, claves, tokens y logs.
-
-Guardar las evidencias fuera de Git, organizadas por fase y fecha. Cada
-archivo debe registrar el comando, fecha, región AWS y requisito demostrado.
-Nunca guardar contraseñas, tokens, cookies, claves PEM o archivos `.env`.
 
 ### Commit
 
