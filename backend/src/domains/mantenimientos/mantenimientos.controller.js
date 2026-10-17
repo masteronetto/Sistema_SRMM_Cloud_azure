@@ -24,3 +24,12 @@ export async function historial(req, res, next) {
     return next(error);
   }
 }
+
+export async function crearIncidencia(req, res, next) {
+  try {
+    const operadorId = req.auth?.oid || req.auth?.sub;
+    return res.status(201).json(await service.crearIncidencia(req.body, operadorId));
+  } catch (error) {
+    return next(error);
+  }
+}

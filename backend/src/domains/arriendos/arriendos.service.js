@@ -1,5 +1,6 @@
 import * as repository from './arriendos.repository.js';
 import { toArriendoDto, toArriendoInput } from './arriendos.dto.js';
+import { publishRentalCreated } from '../../messaging/rabbit.publisher.js';
 
 export function normalizeClienteId(value) {
   if (typeof value !== 'string' && typeof value !== 'number') {
@@ -60,7 +61,9 @@ export async function crear(body) {
   assertValid(input);
 
   const created = await repository.createArriendo(input);
-  return toArriendoDto(created);
+  const response = toArriendoDto(created);
+  await publishRentalCreated(response);
+  return response;
 }
 
 export async function eliminar(id) {

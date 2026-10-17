@@ -78,3 +78,20 @@ export async function listHistorialMantencionesByMaquina(maquinariaId, filtros =
     rows: result.rows
   };
 }
+
+export async function createIncidencia(input) {
+  const result = await requireDatabase().query(`
+    INSERT INTO incidencias_maquina (
+      maquinaria_id_maquina, operador_id, descripcion, criticidad, estado
+    ) VALUES ($1, $2, $3, $4, $5)
+    RETURNING id_incidencia, maquinaria_id_maquina, operador_id, descripcion,
+      criticidad, estado, fecha, created_at
+  `, [
+    input.maquinaria_id_maquina,
+    input.operador_id,
+    input.descripcion,
+    input.criticidad,
+    input.estado
+  ]);
+  return result.rows[0] || null;
+}

@@ -1,5 +1,6 @@
 import * as repository from './logistica.repository.js';
 import { toLogisticaDto, toLogisticaInput } from './logistica.dto.js';
+import { publishLogisticsStateChanged } from '../../messaging/rabbit.publisher.js';
 
 const allowedStates = new Set(['Pendiente', 'Confirmado', 'En Ruta', 'Completado', 'Cancelado']);
 
@@ -37,7 +38,9 @@ export async function crear(payload) {
   const input = toLogisticaInput(payload);
   assertValid(input);
   const created = await repository.createEvento(input);
-  return toLogisticaDto(created);
+  const response = toLogisticaDto(created);
+  await publishLogisticsStateChanged({ action: 'created', ...response });
+  return response;
 }
 
 export async function actualizar(id_evento, payload) {
@@ -57,7 +60,9 @@ export async function actualizar(id_evento, payload) {
     throw error;
   }
 
-  return toLogisticaDto(updated);
+  const response = toLogisticaDto(updated);
+  await publishLogisticsStateChanged({ action: 'updated', ...response });
+  return response;
 }
 
 export async function eliminar(id_evento) {
