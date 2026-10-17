@@ -1,142 +1,124 @@
 # Sistema SRMM
 
-SRMM es una plataforma de gesti�n operativa para maquinaria, mantenimientos, arriendos, log�stica, usuarios y reportes. La aplicaci�n utiliza React/Vite en el frontend y un BFF Express protegido con Microsoft Entra ID en la carpeta `backend`.
+## Descripción
 
-## Arquitectura objetivo
+SRMM es una plataforma para gestionar maquinaria, mantenimiento, arriendos,
+logística, usuarios y reportes. La aplicación está formada por un frontend
+desarrollado con React y Vite, y un backend intermedio desarrollado con
+Express.
 
-```text
-frontend/                   # SPA React/Vite
-+-- src/
-    +-- components/
+El backend intermedio, ubicado en la carpeta `backend`, protege las
+operaciones mediante Microsoft Entra ID y administra la comunicación con
+PostgreSQL.
 
-backend/                    # BFF Express protegido por Azure token
-+-- src/
-    +-- config/env.js
-    +-- middleware/azureAuth.js
-    +-- routes/
-    +-- domains/
-        +-- maquinaria/
-        +-- reportes/
-        +-- arriendos/
-        +-- logistica/
-        +-- mantenimientos/
-        +-- usuarios/
+## Estructura del proyecto
 
-    sql/                        # esquema y scripts de base de datos
-```
+El proyecto se organiza de la siguiente manera:
 
-## Patr�n por dominio
+1. `frontend`: aplicación web desarrollada con React y Vite.
+2. `backend`: backend intermedio desarrollado con Express.
+3. `backend/src/domains`: módulos de negocio separados por dominio.
+4. `backend/src/routes`: rutas HTTP del backend.
+5. `sql`: esquema y scripts de la base de datos.
+6. `infra`: archivos relacionados con la infraestructura y el despliegue.
 
-La base nueva usa una estructura uniforme por dominio:
+## Patrón de desarrollo por dominio
 
-```text
-backend/src/domains/<dominio>/
-+-- <dominio>.dto.js
-+-- <dominio>.service.js
-+-- <dominio>.repository.js
-+-- <dominio>.controller.js
+Cada dominio del backend utiliza una estructura uniforme:
 
-backend/src/routes/<dominio>.routes.js
-```
+1. El archivo `dto` transforma y valida la información de entrada y salida.
+2. El archivo `service` aplica las reglas de negocio.
+3. El archivo `repository` consulta PostgreSQL.
+4. El archivo `controller` prepara la respuesta del backend.
+5. El archivo `routes` publica y protege las rutas del dominio.
 
-El patr�n organiza la l�gica as�:
+Los dominios principales son:
 
-1. `dto`: transforma la estructura de entrada y salida.
-2. `service`: aplica validaciones de negocio.
-3. `repository`: consulta PostgreSQL con SQL real.
-4. `controller`: responde al cliente del BFF.
-5. `routes`: monta y protege el contrato con token Azure y roles.
+1. Maquinaria.
+2. Reportes.
+3. Arriendos.
+4. Logística.
+5. Mantenimientos.
+6. Usuarios.
 
-## Dominios
+## Rutas principales
 
-Cada dominio activo sigue el mismo contrato: DTO, servicio, repositorio, controlador y ruta protegida del BFF. Los dominios disponibles son maquinaria, reportes, arriendos, log�stica, mantenimientos y usuarios.
-
-## Rutas del BFF
-
-El BFF se conecta con estas rutas principales:
+El backend intermedio expone las siguientes rutas:
 
 ```text
-/api/me
-/api/maquinaria
-/api/reportes
-/api/arriendos
-/api/mantenimientos
-/api/logistica
-/api/usuarios
+GET /api/me
+GET y otros métodos /api/maquinaria
+GET y otros métodos /api/reportes
+GET y otros métodos /api/arriendos
+GET y otros métodos /api/mantenimientos
+GET y otros métodos /api/logistica
+GET y otros métodos /api/usuarios
 ```
 
-El endpoint `/api/me` entrega el perfil validado con una identidad de Microsoft Entra y el conjunto de roles asociados al token.
+La ruta `/api/me` entrega el perfil validado del usuario, junto con su
+identidad, organización, permisos y roles disponibles.
 
-## Roles y permisos
+## Seguridad y permisos
 
-La capa de seguridad valida el token del usuario, su audiencia y el issuer esperado. Los roles extra�dos desde el perfil del token se aplican al recurso solicitado:
+El backend valida los tokens emitidos por Microsoft Entra ID antes de
+procesar las rutas protegidas. La validación considera el tenant, el emisor,
+la audiencia, la firma, la expiración y los permisos requeridos.
 
-- consulta p�blica o lectura con permisos base,
-- autorizaci�n de escritura para roles con manejo administrativo,
-- vista anal�tica y CSV adecuada al perfil del usuario.
+Los roles configurados para la aplicación son:
+
+1. `Administrador`.
+2. `Mecanico`.
+3. `Operador`.
+
+Las rutas aplican estos roles según la operación solicitada. Por ejemplo, las
+operaciones administrativas de escritura requieren el rol `Administrador`.
+Las operaciones de logística pueden permitir los roles `Administrador` u
+`Operador`, según la acción.
 
 ## Microsoft Entra ID
 
-Microsoft Entra ID es el proveedor de identidad y autorizacion de la aplicacion. Se registraron dos aplicaciones relacionadas:
+Microsoft Entra ID es el proveedor de identidad y autorización de la
+aplicación. La configuración utiliza dos aplicaciones relacionadas:
 
-- Frontend React como aplicacion publica (SPA), con Client ID `a6fb1036-e64a-4a05-9414-db582910cfa6`.
-- BFF como API protegida, con Application ID URI `api://27c0d23e-24ca-46d3-b804-eb0940334b2e`.
+1. El frontend React está registrado como una aplicación pública de tipo
+   SPA, con el identificador de cliente configurado en la aplicación.
+2. El backend está registrado como una API protegida con su identificador de
+   aplicación correspondiente.
 
-El frontend solicita el scope delegado:
+El frontend solicita el siguiente permiso delegado:
 
 ```text
 api://27c0d23e-24ca-46d3-b804-eb0940334b2e/access_as_user
 ```
 
-La integracion del frontend utiliza `@azure/msal-browser` y `@azure/msal-react` para iniciar sesion, adquirir access tokens, renovar tokens silenciosamente y cerrar sesion.
+La integración del frontend utiliza `@azure/msal-browser` y
+`@azure/msal-react` para iniciar sesión, obtener tokens, renovar la sesión y
+cerrar sesión.
 
-El BFF valida los tokens recibidos antes de procesar las rutas protegidas. La validacion incluye tenant, issuer, audience, firma, expiracion y scope requerido. Las claves publicas se obtienen desde los endpoints JWKS oficiales de Microsoft Entra.
-
-Los App Roles configurados son:
-
-- `Administrador`
-- `Mecanico`
-- `Operador`
-
-Las rutas del BFF aplican estos roles mediante middleware. Por ejemplo, las operaciones de escritura administrativa requieren el rol `Administrador`, mientras que las operaciones de logistica permiten `Administrador` u `Operador` segun la accion.
-
-La identidad validada se puede consultar mediante:
-
-```text
-GET /api/me
-```
-
-La respuesta incluye subject, tenant, audience, scopes y roles detectados desde los claims del token.
-
-Para el entorno publicado se utiliza:
+Para el entorno publicado se utiliza la dirección:
 
 ```text
 https://srmm.duckdns.org
 ```
 
-Esta direccion debe estar registrada como Redirect URI y logout URI de la aplicacion frontend en Microsoft Entra ID.
+Esta dirección debe estar registrada como URI de redirección y URI de cierre
+de sesión en la aplicación frontend de Microsoft Entra ID.
 
-## Datos y base PostgreSQL
+## Base de datos
 
-La aplicaci�n usa PostgreSQL como motor principal de lectura y escritura. Las tablas y columnas de cada dominio deben alinearse con el DTO y el repositorio del BFF para evitar fallas de serializaci�n o contrato.
+La aplicación utiliza PostgreSQL como motor principal de lectura y escritura.
+Las tablas y columnas de cada dominio deben mantenerse alineadas con los
+objetos de transferencia de datos y los repositorios del backend.
 
-## Frontend
+La base de datos se administra mediante Docker Compose. Las credenciales y
+los secretos se proporcionan mediante variables de entorno y no deben
+versionarse en el repositorio.
 
-El frontend en React/Vite consume el BFF con la intenci�n de dejar una UI uniforme y compatibilizada con el perfil de roles.
+## Ejecución local
 
-## Backend
+### Frontend
 
-El backend bajo `backend/` tiene la misi�n de:
-
-- validar el token Microsoft Entra,
-- extender el perfil del usuario con roles,
-- montar cada dominio con su ruta correspondiente,
-- devolver respuestas JSON normalizadas,
-- consultar PostgreSQL con un repositorio compatible con cada dominio.
-
-## Entorno local
-
-Para ejecutar el frontend localmente:
+Desde la carpeta principal del repositorio, ejecutar:
 
 ```bash
 cd frontend
@@ -144,7 +126,9 @@ npm install
 npm run dev
 ```
 
-Para ejecutar el BFF localmente:
+### Backend
+
+Desde la carpeta principal del repositorio, ejecutar:
 
 ```bash
 cd backend
@@ -152,15 +136,23 @@ npm install
 npm run dev
 ```
 
-La base PostgreSQL se gestiona con Docker Compose y se conecta mediante variables de entorno sin versionar secretos ni credenciales.
+### Base de datos
+
+La base PostgreSQL puede iniciarse con Docker Compose. Antes de iniciar los
+servicios, se deben configurar las variables de entorno requeridas para la
+base de datos y para Microsoft Entra ID.
 
 ## Pruebas
 
-La suite de pruebas existente se ejecuta desde la ra�z:
+La suite de pruebas se ejecuta desde la carpeta principal:
 
 ```bash
 npm test
 ```
 
-## Notas
+## Despliegue
 
+Los archivos de infraestructura y las instrucciones específicas de
+despliegue se encuentran en la carpeta `infra`. Las configuraciones
+dependientes del entorno deben mantenerse fuera del código fuente cuando
+contengan credenciales o secretos.
