@@ -4,7 +4,7 @@ services:
     container_name: srmm-postgres
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-local_dev_only}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
       POSTGRES_DB: ${POSTGRES_DB:-srmm_cloud}
     ports:
       - "5433:5432"
@@ -25,7 +25,7 @@ services:
     container_name: srmm-rabbitmq
     environment:
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-srmm}
-      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-local_dev_only}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:?RABBITMQ_PASSWORD must be set}
     # Solo se publica en loopback para pruebas locales; no queda accesible desde Internet.
     ports:
       - "127.0.0.1:5672:5672"
@@ -46,7 +46,7 @@ services:
     container_name: srmm-rabbit-admin
     environment:
       RABBIT_ADMIN_PORT: 3002
-      RABBITMQ_URL: amqp://${RABBITMQ_USER:-srmm}:${RABBITMQ_PASSWORD:-local_dev_only}@rabbitmq:5672
+      RABBITMQ_URL: amqp://${RABBITMQ_USER:-srmm}:${RABBITMQ_PASSWORD:?RABBITMQ_PASSWORD must be set}@rabbitmq:5672
       AZURE_AUTH_ENABLED: ${AZURE_AUTH_ENABLED:-false}
       AZURE_TENANT_ID: ${AZURE_TENANT_ID:-}
       AZURE_API_AUDIENCE: ${AZURE_API_AUDIENCE:-}
