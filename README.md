@@ -7,9 +7,9 @@
 El Sistema SRMM es una plataforma web para apoyar la gestión operativa de
 maquinaria, mantenimientos, arriendos, logística, usuarios y reportes. La
 solución utiliza una arquitectura cloud compuesta por un frontend en React y
-Vite, un backend intermedio en Express, una base de datos PostgreSQL en
-Amazon RDS y servicios de mensajería administrados mediante RabbitMQ y Docker
-Compose.
+Vite, un backend intermedio en Express, un consumidor de eventos en Spring
+Boot, una base de datos PostgreSQL en Amazon RDS y servicios de mensajería
+administrados mediante RabbitMQ y Docker Compose.
 
 La autenticación y la autorización se implementan con Microsoft Entra ID. De
 esta forma, el backend valida la identidad del usuario, los permisos del
@@ -93,9 +93,9 @@ La solución se divide en las siguientes capas:
 4. **Persistencia:** PostgreSQL alojado en Amazon RDS.
 5. **Mensajería:** RabbitMQ recibe y distribuye eventos mediante exchanges,
    colas, routing keys, bindings y colas de mensajes fallidos.
-6. **Microservicio de notificaciones:** consume eventos de forma
-   independiente y aplica confirmaciones manuales, reintentos y tratamiento
-   de errores.
+6. **Microservicio de notificaciones:** aplicación Spring Boot con Spring
+   AMQP que consume eventos por dominio mediante `@RabbitListener`, aplica
+   reintentos y deriva errores a DLQ.
 7. **Microservicio `rabbit-admin`:** administra la infraestructura de
    mensajería mediante endpoints protegidos.
 8. **Operación:** PM2 administra los procesos del backend y de los
@@ -143,14 +143,96 @@ logística y mantenimientos, y el microservicio de notificaciones los
 consume de forma independiente.
 
 La configuración de mensajería contempla exchanges, colas, routing keys,
-bindings y colas de mensajes fallidos. El consumidor utiliza confirmaciones
-manuales, reintentos controlados y derivación de mensajes que no pueden ser
-procesados, evitando perder eventos y permitiendo continuar con la operación
-principal del sistema.
+bindings y colas de mensajes fallidos. Spring AMQP confirma los mensajes
+cuando el listener termina correctamente; ante fallos aplica reintentos
+controlados y deriva a DLQ los mensajes que no pueden ser procesados. Esto
+desacopla el consumo de eventos de la operación principal,
+pero no constituye una garantía de entrega extremo a extremo: si RabbitMQ no
+está disponible, el productor registra el error y el BFF conserva su
+respuesta; no se encontró un patrón outbox que persista el evento para
+publicarlo posteriormente.
 
 El microservicio `rabbit-admin` proporciona endpoints para administrar
 colas, exchanges y bindings. Sus entradas se validan y sus operaciones se
 protegen mediante JWT y el rol `Administrador`.
+
+### 6.1 Correspondencia con el requisito tecnológico
+
+Para responder a los indicadores I2 e I4, se incorporó el microservicio
+`services/notificaciones-spring`, desarrollado con Java 17, Spring Boot y
+Spring AMQP. El servicio declara beans `Queue`, `TopicExchange` y `Binding`
+para arriendos, logística y mantenimientos, incluidas las colas de mensajes
+fallidos. Sus consumidores se implementan con `@RabbitListener` y se
+organizan por dominio funcional.
+
+El BFF y los productores de eventos existentes continúan implementados con
+Express y `amqplib`; la adaptación a Spring Boot se limita al microservicio
+consumidor de notificaciones. Por tanto, el requisito tecnológico se cubre
+en la configuración y consumo de RabbitMQ del nuevo microservicio, pero no
+implica una migración total del backend. La implementación previa en Node.js
+se conserva como referencia y sus consumidores ya no se inician mediante
+PM2, para evitar dos consumidores compitiendo por las mismas colas. Esta
+solución cumple la solicitud de usar Spring Boot para los beans y los
+consumidores de mensajería de I2 e I4; no significa que el BFF Express o el
+frontend React se hayan migrado a Spring Boot.
+
+### 6.2 Flujo de publicación, suscripción y consumo
+
+Los servicios de arriendos, logística y mantenimientos llaman al productor
+compartido del BFF. Por ejemplo, al crear un evento logístico se publica el
+resultado de la operación:
+
+```js
+const response = toLogisticaDto(created);
+await publishLogisticsStateChanged({ action: 'created', ...response });
+return response;
+```
+
+El nuevo servicio Spring declara los recursos del broker como beans. El
+siguiente ejemplo muestra la cola durable de logística y su dead-letter
+exchange:
+
+```java
+@Bean
+Queue logisticsQueue() {
+    return QueueBuilder.durable(RabbitTopology.LOGISTICS_QUEUE)
+            .deadLetterExchange(RabbitTopology.LOGISTICS_DLX)
+            .deadLetterRoutingKey(RabbitTopology.LOGISTICS_DEAD_ROUTING_KEY)
+            .build();
+}
+
+@Bean
+Binding logisticsBinding(
+        @Qualifier("logisticsQueue") Queue queue,
+        @Qualifier("logisticsExchange") TopicExchange exchange) {
+    return BindingBuilder.bind(queue)
+            .to(exchange)
+            .with(RabbitTopology.LOGISTICS_ROUTING_KEY);
+}
+```
+
+Cada dominio tiene su propio consumidor anotado. El consumidor logístico
+valida `data.id_evento` y registra el evento procesado:
+
+```java
+@RabbitListener(
+    queues = RabbitTopology.LOGISTICS_QUEUE,
+    containerFactory = "rabbitListenerContainerFactory")
+public void consume(Message message) {
+    eventHandler.handleLogistics(message);
+}
+```
+
+Ante un error, el listener aplica hasta tres intentos con backoff. Si el
+procesamiento sigue fallando, `RejectAndDontRequeueRecoverer` rechaza el
+mensaje y RabbitMQ lo enruta a la DLQ declarada para su dominio. Los nombres
+de eventos y colas permanecen compatibles con los productores actuales.
+
+El código de referencia se encuentra en
+[RabbitTopologyConfiguration.java](services/notificaciones-spring/src/main/java/cl/srmm/notificaciones/config/RabbitTopologyConfiguration.java),
+[LogisticaNotificationListener.java](services/notificaciones-spring/src/main/java/cl/srmm/notificaciones/listener/LogisticaNotificationListener.java),
+[NotificationEventHandler.java](services/notificaciones-spring/src/main/java/cl/srmm/notificaciones/service/NotificationEventHandler.java)
+y [rabbit.publisher.js](backend/src/messaging/rabbit.publisher.js).
 
 ## 7. Seguridad y control de acceso
 
@@ -218,10 +300,11 @@ esperadas sin publicar credenciales reales.
 Antes de iniciar el sistema se requiere disponer de:
 
 1. Node.js y npm.
-2. Docker y Docker Compose.
-3. Una instancia de PostgreSQL administrada por Docker Compose o disponible
+2. Java 17 con la variable `JAVA_HOME` configurada.
+3. Docker Desktop con el motor Docker activo, y Docker Compose.
+4. Una instancia de PostgreSQL administrada por Docker Compose o disponible
    en el entorno.
-4. Una configuración válida de Microsoft Entra ID cuando se utilicen rutas
+5. Una configuración válida de Microsoft Entra ID cuando se utilicen rutas
    protegidas.
 
 ### 9.2 Ejecución del frontend
@@ -251,20 +334,98 @@ Docker Compose desde la carpeta principal del proyecto. Las credenciales
 deben ser valores locales o de entorno seguro y no deben incorporarse al
 repositorio.
 
-## 10. Pruebas y verificación
+### 9.5 Compilación y ejecución del consumidor Spring Boot
 
-La suite de pruebas del proyecto se ejecuta desde la carpeta principal:
+Se requiere Java 17. El Maven Wrapper descarga la versión de Maven definida
+por el proyecto, por lo que no es necesario instalar Maven globalmente.
+RabbitMQ debe estar iniciado y accesible en la dirección configurada:
 
-```bash
-npm test
+```powershell
+cd services/notificaciones-spring
+$env:SPRING_RABBITMQ_HOST = "localhost"
+$env:SPRING_RABBITMQ_PORT = "5672"
+$env:SPRING_RABBITMQ_USERNAME = "srmm"
+$env:SPRING_RABBITMQ_PASSWORD = "<contraseña-local>"
+.\mvnw.cmd spring-boot:run
 ```
 
-Los módulos que incorporan pruebas específicas también mantienen sus
-pruebas junto al componente correspondiente, de acuerdo con la estructura
-del proyecto. La validación integral considera la disponibilidad de API
-Gateway, la comunicación entre el BFF y Amazon RDS, el flujo de publicación y
-consumo de eventos en RabbitMQ, la autenticación y autorización, y la
-ejecución de los procesos administrados por PM2.
+Para empaquetar el servicio para PM2:
+
+```powershell
+.\mvnw.cmd -DskipTests package
+```
+
+PM2 ejecuta el artefacto `target/notificaciones-spring-0.1.0.jar`. La
+configuración de proceso se encuentra en
+[ecosystem.config.cjs](ecosystem.config.cjs).
+
+Para evitar publicar credenciales, configura `SPRING_RABBITMQ_PASSWORD` en
+la sesión local usando la contraseña de desarrollo antes de iniciar el
+servicio. En el entorno de despliegue, PM2 recibe `RABBITMQ_USER` y
+`RABBITMQ_PASSWORD` desde la configuración segura del servidor.
+
+## 10. Pruebas y verificación
+
+Las pruebas integradas utilizan una instancia RabbitMQ exclusiva para
+pruebas, iniciada con Docker Compose en `localhost:5673`. Esta instancia es
+independiente del broker local y del broker de la instancia cloud. Antes de
+ejecutar la suite, confirma que Docker está activo:
+
+```powershell
+docker info
+```
+
+Define una contraseña temporal solo para el broker de pruebas. No uses aquí
+la contraseña del broker de producción:
+
+```powershell
+$env:RABBITMQ_TEST_PASSWORD = "<contraseña-temporal-local>"
+```
+
+Primero inicia el broker de pruebas y espera su estado saludable:
+
+```powershell
+docker compose -f services/notificaciones-spring/docker-compose.test.yml up -d --wait
+docker compose -f services/notificaciones-spring/docker-compose.test.yml ps
+```
+
+La compilación de la aplicación y las pruebas es un primer punto de evidencia:
+
+```powershell
+cd services/notificaciones-spring
+.\mvnw.cmd -DskipTests test
+```
+
+Después ejecuta los seis escenarios de integración:
+
+```powershell
+.\mvnw.cmd test
+```
+
+Al finalizar, detén únicamente el broker de pruebas:
+
+```powershell
+docker compose -f services/notificaciones-spring/docker-compose.test.yml down
+```
+
+La suite contiene seis escenarios: procesamiento exitoso y fallo con
+reintentos y DLQ para cada dominio. La prueba logística exitosa verifica el
+consumo del evento con `id_evento`; los escenarios fallidos comprueban tres
+intentos, la llegada a la DLQ y el metadato `x-death` de RabbitMQ.
+Maven guarda los resultados de Surefire en
+`services/notificaciones-spring/target/surefire-reports`.
+
+| Dominio | Evento publicado y consumido | Fallo, reintentos y DLQ | Estado de prueba integrada |
+|---|---|---|---|
+| Arriendos | `arriendo.creado`, con `id_contrato` | Tres intentos y llegada a la DLQ del dominio | Aprobada |
+| Logística | `logistica.estado-cambiado`, con `id_evento` | Tres intentos y llegada a la DLQ del dominio | Aprobada |
+| Mantenimientos | `mantenimiento.incidencia-critica`, con `id_incidencia` | Tres intentos y llegada a la DLQ del dominio | Aprobada |
+
+El código de pruebas está en
+[NotificationsIntegrationTest.java](services/notificaciones-spring/src/test/java/cl/srmm/notificaciones/NotificationsIntegrationTest.java).
+La ejecución local de la suite terminó con seis pruebas aprobadas, cero
+fallos y cero errores. Surefire conserva los resultados en
+`services/notificaciones-spring/target/surefire-reports`.
 
 ## 11. Despliegue
 

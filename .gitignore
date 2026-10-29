@@ -3,6 +3,7 @@ node_modules/
 *.log
 dist/
 build/
+/services/notificaciones-spring/target/
 .vercel
 .env
 .env.*
