@@ -12,4 +12,12 @@ build/
 cookies.txt
 jwks.json
 *.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+*.secret
+*.secrets
+secrets/
 docker-data/

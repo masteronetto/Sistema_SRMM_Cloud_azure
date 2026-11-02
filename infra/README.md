@@ -113,11 +113,19 @@ pm2 start ecosystem.config.cjs --only srmm-notificaciones-spring
 pm2 logs srmm-notificaciones-spring
 ```
 
-La configuración Spring declara una cola y una DLQ por cada dominio, y
-aplica tres intentos de procesamiento antes de rechazar el mensaje para su
-derivación a la DLQ correspondiente. No se debe iniciar en paralelo
+La configuración Spring declara una cola y una DLQ por cada dominio. Los
+consumidores usan ACK manual: los errores no recuperables se rechazan
+directamente hacia DLQ, mientras que los errores tipados como transitorios
+se reintentan hasta tres entregas. No se debe iniciar en paralelo
 `services/notificaciones/src/consumer.js`, ya que ambos consumidores
 competirían por los mensajes de las mismas colas.
+
+El microservicio `rabbit-admin` expone listados `GET /queues` y
+`GET /exchanges`, y las operaciones de creación responden `201`. Para listar
+recursos, RabbitMQ Management debe estar habilitado. La URL se deriva del
+`RABBITMQ_URL` AMQP usando el puerto Management estándar; se puede definir
+`RABBITMQ_MANAGEMENT_URL` si el broker usa otra dirección. Mantén ese endpoint
+accesible solo desde la red privada o loopback.
 
 Las pruebas integradas utilizan un RabbitMQ exclusivo en el puerto local
 5673. Define una contraseña temporal en la terminal e inicia el broker desde

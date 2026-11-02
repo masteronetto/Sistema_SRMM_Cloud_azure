@@ -38,18 +38,23 @@ public class NotificationEventHandler {
         try {
             event = objectMapper.readTree(message.getBody());
         } catch (IOException exception) {
-            throw new IllegalArgumentException("El mensaje no contiene un evento JSON válido.", exception);
+            throw new NonRecoverableNotificationException(
+                    "El mensaje no contiene un evento JSON válido.", exception);
+        }
+        if (event == null) {
+            throw new NonRecoverableNotificationException("El mensaje está vacío.");
         }
 
         String eventType = textValue(event, "eventType");
         if (!expectedType.equals(eventType)) {
-            throw new IllegalArgumentException("Tipo de evento inesperado para " + domain + ".");
+            throw new NonRecoverableNotificationException("Tipo de evento inesperado para " + domain + ".");
         }
 
         JsonNode data = event.path("data");
         JsonNode identifier = data.path(requiredId);
         if (identifier.isMissingNode() || identifier.isNull() || identifier.asText().isBlank()) {
-            throw new IllegalArgumentException("El evento de " + domain + " no contiene " + requiredId + ".");
+            throw new NonRecoverableNotificationException(
+                    "El evento de " + domain + " no contiene " + requiredId + ".");
         }
 
         LOGGER.info("Evento de {} procesado correctamente: eventId={}, {}={}",
@@ -59,7 +64,7 @@ public class NotificationEventHandler {
     private String textValue(JsonNode event, String field) {
         JsonNode value = event.path(field);
         if (value.isMissingNode() || value.isNull() || value.asText().isBlank()) {
-            throw new IllegalArgumentException("El evento no contiene " + field + ".");
+            throw new NonRecoverableNotificationException("El evento no contiene " + field + ".");
         }
         return value.asText();
     }

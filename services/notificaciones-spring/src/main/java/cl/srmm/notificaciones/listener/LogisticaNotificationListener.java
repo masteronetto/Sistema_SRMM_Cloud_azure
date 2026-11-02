@@ -2,6 +2,8 @@ package cl.srmm.notificaciones.listener;
 
 import cl.srmm.notificaciones.config.RabbitTopology;
 import cl.srmm.notificaciones.service.NotificationEventHandler;
+import cl.srmm.notificaciones.service.NotificationMessageProcessor;
+import com.rabbitmq.client.Channel;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.stereotype.Component;
@@ -10,13 +12,25 @@ import org.springframework.stereotype.Component;
 public class LogisticaNotificationListener {
 
     private final NotificationEventHandler eventHandler;
+    private final NotificationMessageProcessor messageProcessor;
 
-    public LogisticaNotificationListener(NotificationEventHandler eventHandler) {
+    public LogisticaNotificationListener(
+            NotificationEventHandler eventHandler,
+            NotificationMessageProcessor messageProcessor
+    ) {
         this.eventHandler = eventHandler;
+        this.messageProcessor = messageProcessor;
     }
 
     @RabbitListener(queues = RabbitTopology.LOGISTICS_QUEUE, containerFactory = "rabbitListenerContainerFactory")
-    public void consume(Message message) {
-        eventHandler.handleLogistics(message);
+    public void consume(Message message, Channel channel) throws java.io.IOException {
+        messageProcessor.process(
+                message,
+                channel,
+                RabbitTopology.LOGISTICS_QUEUE,
+                RabbitTopology.LOGISTICS_EXCHANGE,
+                RabbitTopology.LOGISTICS_ROUTING_KEY,
+                () -> eventHandler.handleLogistics(message)
+        );
     }
 }

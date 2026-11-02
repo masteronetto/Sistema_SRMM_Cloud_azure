@@ -2,6 +2,7 @@ package cl.srmm.notificaciones;
 
 import cl.srmm.notificaciones.config.RabbitTopology;
 import cl.srmm.notificaciones.service.NotificationEventHandler;
+import cl.srmm.notificaciones.service.TransientNotificationException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -25,6 +26,8 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.reset;
+import static org.mockito.Mockito.doCallRealMethod;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.timeout;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -64,12 +67,12 @@ class NotificationsIntegrationTest {
     }
 
     @Test
-    void routesFailedRentalEventToDeadLetterQueueAfterRetries() throws Exception {
+    void routesInvalidRentalEventToDeadLetterQueueWithoutRetry() throws Exception {
         publish(RabbitTopology.RENTAL_EXCHANGE, RabbitTopology.RENTAL_ROUTING_KEY,
                 "arriendo.creado", Map.of("id_invalido", 101));
 
         assertDeadLetter(RabbitTopology.RENTAL_DLQ);
-        verify(eventHandler, times(3)).handleRental(any(Message.class));
+        verify(eventHandler, times(1)).handleRental(any(Message.class));
     }
 
     @Test
@@ -81,12 +84,12 @@ class NotificationsIntegrationTest {
     }
 
     @Test
-    void routesFailedLogisticsEventToDeadLetterQueueAfterRetries() throws Exception {
+    void routesInvalidLogisticsEventToDeadLetterQueueWithoutRetry() throws Exception {
         publish(RabbitTopology.LOGISTICS_EXCHANGE, RabbitTopology.LOGISTICS_ROUTING_KEY,
                 "logistica.estado-cambiado", Map.of("id_evento", ""));
 
         assertDeadLetter(RabbitTopology.LOGISTICS_DLQ);
-        verify(eventHandler, times(3)).handleLogistics(any(Message.class));
+        verify(eventHandler, times(1)).handleLogistics(any(Message.class));
     }
 
     @Test
@@ -98,12 +101,45 @@ class NotificationsIntegrationTest {
     }
 
     @Test
-    void routesFailedMaintenanceEventToDeadLetterQueueAfterRetries() throws Exception {
+    void routesInvalidMaintenanceEventToDeadLetterQueueWithoutRetry() throws Exception {
         publish(RabbitTopology.MAINTENANCE_EXCHANGE, RabbitTopology.MAINTENANCE_ROUTING_KEY,
                 "mantenimiento.incidencia-critica", Map.of("criticidad", "Alta"));
 
         assertDeadLetter(RabbitTopology.MAINTENANCE_DLQ);
-        verify(eventHandler, times(3)).handleMaintenance(any(Message.class));
+        verify(eventHandler, times(1)).handleMaintenance(any(Message.class));
+    }
+
+    @Test
+    void retriesTransientLogisticsFailureAndAcknowledgesAfterSuccess() throws Exception {
+        doThrow(new TransientNotificationException("Fallo temporal de prueba"))
+                .doCallRealMethod()
+                .when(eventHandler).handleLogistics(any(Message.class));
+
+        publish(RabbitTopology.LOGISTICS_EXCHANGE, RabbitTopology.LOGISTICS_ROUTING_KEY,
+                "logistica.estado-cambiado", Map.of("id_evento", 204));
+
+        verify(eventHandler, timeout(5_000).times(2)).handleLogistics(any(Message.class));
+        assertEquals(0, rabbitAdmin.getQueueInfo(RabbitTopology.LOGISTICS_QUEUE).getMessageCount());
+    }
+
+    @Test
+    void routesMalformedLogisticsJsonToDeadLetterWithoutRetry() throws Exception {
+        publishRaw(RabbitTopology.LOGISTICS_EXCHANGE, RabbitTopology.LOGISTICS_ROUTING_KEY, "{invalid");
+
+        assertDeadLetter(RabbitTopology.LOGISTICS_DLQ);
+        verify(eventHandler, times(1)).handleLogistics(any(Message.class));
+    }
+
+    @Test
+    void routesExhaustedTransientLogisticsFailuresToDeadLetterAfterThreeAttempts() throws Exception {
+        doThrow(new TransientNotificationException("Fallo temporal persistente"))
+                .when(eventHandler).handleLogistics(any(Message.class));
+
+        publish(RabbitTopology.LOGISTICS_EXCHANGE, RabbitTopology.LOGISTICS_ROUTING_KEY,
+                "logistica.estado-cambiado", Map.of("id_evento", 205));
+
+        assertDeadLetter(RabbitTopology.LOGISTICS_DLQ);
+        verify(eventHandler, times(3)).handleLogistics(any(Message.class));
     }
 
     private void publish(String exchange, String routingKey, String eventType, Map<String, Object> data)
@@ -114,11 +150,15 @@ class NotificationsIntegrationTest {
                 "occurredAt", Instant.now().toString(),
                 "data", data
         );
+        publishRaw(exchange, routingKey, objectMapper.writeValueAsString(event));
+    }
+
+    private void publishRaw(String exchange, String routingKey, String body) {
         var properties = new MessageProperties();
         properties.setContentType(MessageProperties.CONTENT_TYPE_JSON);
         properties.setDeliveryMode(MessageDeliveryMode.PERSISTENT);
         rabbitTemplate.send(exchange, routingKey, MessageBuilder
-                .withBody(objectMapper.writeValueAsBytes(event))
+                .withBody(body.getBytes(java.nio.charset.StandardCharsets.UTF_8))
                 .andProperties(properties)
                 .build());
     }

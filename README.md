@@ -143,10 +143,10 @@ logística y mantenimientos, y el microservicio de notificaciones los
 consume de forma independiente.
 
 La configuración de mensajería contempla exchanges, colas, routing keys,
-bindings y colas de mensajes fallidos. Spring AMQP confirma los mensajes
-cuando el listener termina correctamente; ante fallos aplica reintentos
-controlados y deriva a DLQ los mensajes que no pueden ser procesados. Esto
-desacopla el consumo de eventos de la operación principal,
+bindings y colas de mensajes fallidos. El consumidor Spring confirma
+explícitamente los mensajes procesados con ACK, deriva errores no recuperables
+a DLQ mediante NACK y aplica reintentos acotados solo a errores transitorios.
+Esto desacopla el consumo de eventos de la operación principal,
 pero no constituye una garantía de entrega extremo a extremo: si RabbitMQ no
 está disponible, el productor registra el error y el BFF conserva su
 respuesta; no se encontró un patrón outbox que persista el evento para
@@ -155,6 +155,14 @@ publicarlo posteriormente.
 El microservicio `rabbit-admin` proporciona endpoints para administrar
 colas, exchanges y bindings. Sus entradas se validan y sus operaciones se
 protegen mediante JWT y el rol `Administrador`.
+
+La API lista recursos con `GET /queues` y `GET /exchanges`; los endpoints
+`POST` declaran colas, exchanges y bindings con estado HTTP `201`. Las
+consultas de recursos inexistentes responden `404`. Si RabbitMQ cierra el
+canal AMQP después de un error, el servicio invalida la referencia y crea un
+canal nuevo para la siguiente operación. La implementación está en
+[app.js](services/rabbit-admin/src/app.js) y
+[rabbit-admin.service.js](services/rabbit-admin/src/rabbit-admin.service.js).
 
 ### 6.1 Correspondencia con el requisito tecnológico
 
@@ -169,12 +177,11 @@ El BFF y los productores de eventos existentes continúan implementados con
 Express y `amqplib`; la adaptación a Spring Boot se limita al microservicio
 consumidor de notificaciones. Por tanto, el requisito tecnológico se cubre
 en la configuración y consumo de RabbitMQ del nuevo microservicio, pero no
-implica una migración total del backend. La implementación previa en Node.js
-se conserva como referencia y sus consumidores ya no se inician mediante
-PM2, para evitar dos consumidores compitiendo por las mismas colas. Esta
-solución cumple la solicitud de usar Spring Boot para los beans y los
-consumidores de mensajería de I2 e I4; no significa que el BFF Express o el
-frontend React se hayan migrado a Spring Boot.
+implica una migración total del backend. El antiguo consumidor Node.js se
+mantiene solo como referencia histórica, está marcado como obsoleto y no
+debe ejecutarse. Esta solución cumple la solicitud de usar Spring Boot para
+los beans y consumidores de mensajería de I2 e I4; no significa que el BFF
+Express o el frontend React se hayan migrado a Spring Boot.
 
 ### 6.2 Flujo de publicación, suscripción y consumo
 
@@ -218,15 +225,21 @@ valida `data.id_evento` y registra el evento procesado:
 @RabbitListener(
     queues = RabbitTopology.LOGISTICS_QUEUE,
     containerFactory = "rabbitListenerContainerFactory")
-public void consume(Message message) {
-    eventHandler.handleLogistics(message);
+public void consume(Message message, Channel channel) throws IOException {
+    messageProcessor.process(
+        message, channel, RabbitTopology.LOGISTICS_QUEUE,
+        RabbitTopology.LOGISTICS_EXCHANGE, RabbitTopology.LOGISTICS_ROUTING_KEY,
+        () -> eventHandler.handleLogistics(message));
 }
 ```
 
-Ante un error, el listener aplica hasta tres intentos con backoff. Si el
-procesamiento sigue fallando, `RejectAndDontRequeueRecoverer` rechaza el
-mensaje y RabbitMQ lo enruta a la DLQ declarada para su dominio. Los nombres
-de eventos y colas permanecen compatibles con los productores actuales.
+Los listeners reciben también el canal AMQP nativo. `NotificationMessageProcessor`
+ejecuta `basicAck` al completar con éxito, envía errores de formato o validación
+a la DLQ con `basicNack(..., false, false)` y reintenta como máximo tres
+entregas únicamente para `TransientNotificationException`. Los errores
+inesperados se registran y se rechazan sin reencolar para evitar ciclos
+infinitos. Cada rechazo registra el identificador, la cola y el motivo. Los
+nombres de eventos y colas permanecen compatibles con los productores actuales.
 
 El código de referencia se encuentra en
 [RabbitTopologyConfiguration.java](services/notificaciones-spring/src/main/java/cl/srmm/notificaciones/config/RabbitTopologyConfiguration.java),
@@ -396,7 +409,8 @@ cd services/notificaciones-spring
 .\mvnw.cmd -DskipTests test
 ```
 
-Después ejecuta los seis escenarios de integración:
+Ejecuta los nueve escenarios de integración y cuatro pruebas unitarias del
+procesador de mensajes:
 
 ```powershell
 .\mvnw.cmd test
@@ -408,24 +422,47 @@ Al finalizar, detén únicamente el broker de pruebas:
 docker compose -f services/notificaciones-spring/docker-compose.test.yml down
 ```
 
-La suite contiene seis escenarios: procesamiento exitoso y fallo con
-reintentos y DLQ para cada dominio. La prueba logística exitosa verifica el
-consumo del evento con `id_evento`; los escenarios fallidos comprueban tres
-intentos, la llegada a la DLQ y el metadato `x-death` de RabbitMQ.
+La suite contiene nueve escenarios integrados: éxito y fallo no recuperable
+con llegada a DLQ para cada dominio; un reintento transitorio que luego se
+procesa con éxito; un error transitorio que agota tres intentos y termina en
+DLQ; y JSON malformado que llega a DLQ sin reintentos. Las pruebas verifican
+los metadatos `x-death` de RabbitMQ. Cuatro pruebas unitarias verifican las llamadas a
+`basicAck`, `basicNack` y el comportamiento del límite de reintentos. En total,
+Maven ejecuta trece pruebas.
 Maven guarda los resultados de Surefire en
 `services/notificaciones-spring/target/surefire-reports`.
 
-| Dominio | Evento publicado y consumido | Fallo, reintentos y DLQ | Estado de prueba integrada |
+| Dominio | Evento publicado y consumido | Fallo y DLQ | Estado de prueba integrada |
 |---|---|---|---|
-| Arriendos | `arriendo.creado`, con `id_contrato` | Tres intentos y llegada a la DLQ del dominio | Aprobada |
-| Logística | `logistica.estado-cambiado`, con `id_evento` | Tres intentos y llegada a la DLQ del dominio | Aprobada |
-| Mantenimientos | `mantenimiento.incidencia-critica`, con `id_incidencia` | Tres intentos y llegada a la DLQ del dominio | Aprobada |
+| Arriendos | `arriendo.creado`, con `id_contrato` | Error no recuperable enviado a su DLQ | Aprobada |
+| Logística | `logistica.estado-cambiado`, con `id_evento` | Error no recuperable enviado a su DLQ | Aprobada |
+| Mantenimientos | `mantenimiento.incidencia-critica`, con `id_incidencia` | Error no recuperable enviado a su DLQ | Aprobada |
 
 El código de pruebas está en
 [NotificationsIntegrationTest.java](services/notificaciones-spring/src/test/java/cl/srmm/notificaciones/NotificationsIntegrationTest.java).
-La ejecución local de la suite terminó con seis pruebas aprobadas, cero
-fallos y cero errores. Surefire conserva los resultados en
-`services/notificaciones-spring/target/surefire-reports`.
+Los pasos y capturas recomendadas para documentar fallos, DLQ y el evento
+logístico exitoso están en
+[PRUEBAS_INTEGRACION_RABBITMQ.md](docs/PRUEBAS_INTEGRACION_RABBITMQ.md).
+
+### 10.1 Verificación del despliegue en EC2
+
+El 29 de octubre de 2026 se ejecutó la suite integrada en la instancia
+EC2: seis pruebas, cero fallos, cero errores y `BUILD SUCCESS` para la
+versión desplegada en esa fecha, anterior a los cambios de ACK manual y
+clasificación de errores documentados aquí. El broker
+RabbitMQ de la instancia quedó saludable y se verificaron consumidores
+activos en las tres colas de dominio.
+
+PM2 mantiene activo `srmm-notificaciones-spring`; el consumidor Node.js
+anterior se dejó detenido para evitar consumidores duplicados. Como prueba
+de extremo a extremo, se creó un evento logístico de prueba en la aplicación
+y el log de Spring confirmó su procesamiento correcto con `id_evento=5`.
+La evidencia consiste en la salida de Maven, el estado de PM2 y RabbitMQ, la
+confirmación del evento en la aplicación y el log del consumidor.
+
+El estado de PM2 se guardó para su recuperación después de un reinicio. El
+archivo `~/.pm2/dump.pm2` puede contener variables de entorno sensibles y se
+protegió con permisos `600`; no debe copiarse ni publicarse en el repositorio.
 
 ## 11. Despliegue
 
