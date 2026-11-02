@@ -1,0 +1,16 @@
+services:
+  rabbitmq-test:
+    image: rabbitmq:3.13-management-alpine
+    container_name: srmm-notificaciones-rabbitmq-test
+    environment:
+      RABBITMQ_DEFAULT_USER: srmm_test
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_TEST_PASSWORD:?Define una contraseña local para el broker de pruebas}
+    ports:
+      - "127.0.0.1:5673:5672"
+      - "127.0.0.1:15673:15672"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "check_running"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped

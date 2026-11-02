@@ -89,3 +89,59 @@ Mantener nginx y Certbot activos en EC2 para servir el frontend por HTTPS.
 API Gateway publica el BFF, mientras el puerto 3001 debe limitarse al origen
 necesario según la topología elegida. No exponer RabbitMQ en 5672/15672 ni
 `rabbit-admin` en 3002 directamente a Internet.
+
+## Consumidor de notificaciones Spring Boot
+
+El consumidor de eventos se implementa en
+`services/notificaciones-spring` con Java 17 y Spring AMQP. Antes de
+iniciarlo, configurar `RABBITMQ_USER` y `RABBITMQ_PASSWORD` desde el
+mecanismo seguro de secretos del servidor y comprobar que RabbitMQ está
+disponible.
+
+Empaquetar el microservicio desde la raíz del repositorio:
+
+```bash
+cd services/notificaciones-spring
+sh ./mvnw -DskipTests package
+cd ../..
+```
+
+Iniciar el proceso administrado por PM2:
+
+```bash
+pm2 start ecosystem.config.cjs --only srmm-notificaciones-spring
+pm2 logs srmm-notificaciones-spring
+```
+
+La configuración Spring declara una cola y una DLQ por cada dominio. Los
+consumidores usan ACK manual: los errores no recuperables se rechazan
+directamente hacia DLQ, mientras que los errores tipados como transitorios
+se reintentan hasta tres entregas. No se debe iniciar en paralelo
+`services/notificaciones/src/consumer.js`, ya que ambos consumidores
+competirían por los mensajes de las mismas colas.
+
+El microservicio `rabbit-admin` expone listados `GET /queues` y
+`GET /exchanges`, y las operaciones de creación responden `201`. Para listar
+recursos, RabbitMQ Management debe estar habilitado. La URL se deriva del
+`RABBITMQ_URL` AMQP usando el puerto Management estándar; se puede definir
+`RABBITMQ_MANAGEMENT_URL` si el broker usa otra dirección. Mantén ese endpoint
+accesible solo desde la red privada o loopback.
+
+Las pruebas integradas utilizan un RabbitMQ exclusivo en el puerto local
+5673. Define una contraseña temporal en la terminal e inicia el broker desde
+la raíz del repositorio:
+
+```bash
+export RABBITMQ_TEST_PASSWORD="<contraseña-local-de-pruebas>"
+docker compose -f services/notificaciones-spring/docker-compose.test.yml up -d --wait
+```
+
+Ejecuta las pruebas desde `services/notificaciones-spring` y luego detén
+solamente el broker aislado:
+
+```bash
+cd services/notificaciones-spring
+sh ./mvnw test
+cd ../..
+docker compose -f services/notificaciones-spring/docker-compose.test.yml down
+```

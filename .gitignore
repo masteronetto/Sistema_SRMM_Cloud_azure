@@ -3,6 +3,7 @@ node_modules/
 *.log
 dist/
 build/
+/services/notificaciones-spring/target/
 .vercel
 .env
 .env.*
@@ -11,4 +12,12 @@ build/
 cookies.txt
 jwks.json
 *.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+*.secret
+*.secrets
+secrets/
 docker-data/
