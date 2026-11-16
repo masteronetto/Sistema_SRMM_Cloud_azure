@@ -1,0 +1,17 @@
+name: srmm-kafka-ui
+
+services:
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    ports:
+      - "127.0.0.1:8085:8080"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: srmm-kafka
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: ${KAFKA_UI_BOOTSTRAP_SERVERS:-kafka1:29092,kafka2:29092,kafka3:29092}
+    networks:
+      - srmm-kafka
+
+networks:
+  srmm-kafka:
+    external: true
+    name: srmm-kafka
