@@ -6,6 +6,10 @@ $replicationFactor = 3
 if (-not [string]::IsNullOrWhiteSpace($env:KAFKA_REPLICATION_FACTOR)) {
     $replicationFactor = [int]$env:KAFKA_REPLICATION_FACTOR
 }
+if ($replicationFactor -lt 1) {
+    throw 'KAFKA_REPLICATION_FACTOR must be a positive integer.'
+}
+$minInsyncReplicas = if ($replicationFactor -ge 3) { 2 } else { 1 }
 
 function Invoke-KafkaCli {
     param([Parameter(Mandatory = $true)][string[]]$Arguments)
@@ -62,7 +66,7 @@ function Ensure-Topic {
     }
 }
 
-Ensure-Topic 'srmm.eventos-operacionales' 3 $replicationFactor 'cleanup.policy=delete,retention.ms=604800000,min.insync.replicas=2'
-Ensure-Topic 'srmm.estado-maquinaria' 3 $replicationFactor 'cleanup.policy=compact\,delete,min.cleanable.dirty.ratio=0.1,min.insync.replicas=2'
+Ensure-Topic 'srmm.eventos-operacionales' 3 $replicationFactor "cleanup.policy=delete,retention.ms=604800000,min.insync.replicas=$minInsyncReplicas"
+Ensure-Topic 'srmm.estado-maquinaria' 3 $replicationFactor "cleanup.policy=compact,min.cleanable.dirty.ratio=0.1,min.insync.replicas=$minInsyncReplicas"
 Ensure-Topic 'srmm.eventos-operacionales.DLT' 1 $replicationFactor 'retention.ms=2592000000'
 Ensure-Topic 'srmm.estado-maquinaria.DLT' 1 $replicationFactor 'retention.ms=2592000000'

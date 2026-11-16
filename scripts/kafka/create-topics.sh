@@ -4,6 +4,15 @@ set -euo pipefail
 repository_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 compose_file="$repository_root/docker-compose.kafka.yml"
 replication_factor="${KAFKA_REPLICATION_FACTOR:-3}"
+if [[ ! "$replication_factor" =~ ^[1-9][0-9]*$ ]]; then
+  echo "KAFKA_REPLICATION_FACTOR must be a positive integer." >&2
+  exit 1
+fi
+if (( replication_factor >= 3 )); then
+  min_insync_replicas=2
+else
+  min_insync_replicas=1
+fi
 
 ensure_topic() {
   local name="$1"
@@ -47,9 +56,9 @@ ensure_topic() {
 }
 
 ensure_topic srmm.eventos-operacionales 3 "$replication_factor" \
-  'cleanup.policy=delete,retention.ms=604800000,min.insync.replicas=2'
+  "cleanup.policy=delete,retention.ms=604800000,min.insync.replicas=$min_insync_replicas"
 ensure_topic srmm.estado-maquinaria 3 "$replication_factor" \
-  'cleanup.policy=compact\,delete,min.cleanable.dirty.ratio=0.1,min.insync.replicas=2'
+  "cleanup.policy=compact,min.cleanable.dirty.ratio=0.1,min.insync.replicas=$min_insync_replicas"
 ensure_topic srmm.eventos-operacionales.DLT 1 "$replication_factor" \
   'retention.ms=2592000000'
 ensure_topic srmm.estado-maquinaria.DLT 1 "$replication_factor" \
