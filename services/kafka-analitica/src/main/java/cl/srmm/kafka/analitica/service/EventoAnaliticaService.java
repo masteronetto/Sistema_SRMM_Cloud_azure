@@ -2,6 +2,7 @@ package cl.srmm.kafka.analitica.service;
 
 import cl.srmm.kafka.bridge.messaging.dto.EstadoMaquinariaDto;
 import cl.srmm.kafka.bridge.messaging.dto.EventoOperacionalDto;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -23,6 +24,7 @@ public class EventoAnaliticaService {
             new ConcurrentHashMap<>();
     private final Map<String, EstadoMaquinariaDto> lastStateByMachinery = new ConcurrentHashMap<>();
 
+    @Autowired
     public EventoAnaliticaService(
             @Value("${srmm.kafka.analytics.window-duration:PT5M}") Duration window
     ) {
