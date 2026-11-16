@@ -21,3 +21,8 @@ jwks.json
 *.secrets
 secrets/
 docker-data/
+target/
+logs/
+kafka-data/
+kafka-logs/
+!**/.env.example

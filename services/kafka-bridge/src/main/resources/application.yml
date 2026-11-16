@@ -1,0 +1,23 @@
+spring:
+  application:
+    name: srmm-kafka-bridge
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:srmm}
+    password: ${RABBITMQ_PASSWORD:}
+    listener:
+      simple:
+        acknowledge-mode: manual
+        prefetch: ${RABBITMQ_PREFETCH:10}
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092,localhost:9093,localhost:9094}
+
+srmm:
+  kafka:
+    producer:
+      acks: ${KAFKA_PRODUCER_ACKS:all}
+      enable-idempotence: ${KAFKA_PRODUCER_ENABLE_IDEMPOTENCE:true}
+      retries: ${KAFKA_PRODUCER_RETRIES:10}
+      linger-ms: ${KAFKA_PRODUCER_LINGER_MS:5}
+      compression-type: ${KAFKA_PRODUCER_COMPRESSION_TYPE:lz4}
