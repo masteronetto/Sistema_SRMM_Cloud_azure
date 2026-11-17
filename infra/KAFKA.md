@@ -59,7 +59,7 @@ Set-Location services/kafka-admin
 .\mvnw.cmd spring-boot:run
 ```
 
-El endpoint `POST /consumer-groups/{id}/reset-offsets` recibe offsets explícitos, por ejemplo `{"offsets":[{"topic":"srmm.eventos-operacionales","partition":0,"offset":42}]}`, y solo los aplica si el grupo no tiene miembros activos.
+El endpoint `POST /consumer-groups/{id}/reset-offsets` admite `modo: "EARLIEST"`, `"LATEST"` o `"ESPECIFICO"`. EARLIEST/LATEST usan las particiones con offsets confirmados del grupo o, si no hay, el campo `topics` para resolver todas las particiones. ESPECIFICO usa la lista `offsets`; si se omite `modo` pero se envían `offsets`, se asume ESPECIFICO. Por ejemplo: `{"modo":"ESPECIFICO","offsets":[{"topic":"srmm.eventos-operacionales","partition":0,"offset":42}]}`. El grupo debe estar inactivo para cualquier modo.
 
 ## Kafka Bridge
 

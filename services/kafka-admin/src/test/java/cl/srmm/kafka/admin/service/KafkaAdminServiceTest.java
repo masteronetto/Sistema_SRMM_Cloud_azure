@@ -12,6 +12,9 @@ import org.apache.kafka.clients.admin.DescribeClusterResult;
 import org.apache.kafka.clients.admin.DescribeConsumerGroupsResult;
 import org.apache.kafka.clients.admin.DescribeConfigsResult;
 import org.apache.kafka.clients.admin.DescribeTopicsResult;
+import org.apache.kafka.clients.admin.ListConsumerGroupOffsetsResult;
+import org.apache.kafka.clients.admin.ListOffsetsResult;
+import org.apache.kafka.clients.admin.OffsetSpec;
 import org.apache.kafka.clients.admin.MemberDescription;
 import org.apache.kafka.clients.admin.Config;
 import org.apache.kafka.clients.admin.ConfigEntry;
@@ -22,6 +25,7 @@ import org.apache.kafka.common.TopicPartitionInfo;
 import org.apache.kafka.common.config.ConfigResource;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.clients.admin.ListOffsetsResult.ListOffsetsResultInfo;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -108,8 +112,8 @@ class KafkaAdminServiceTest {
                 AdminApiException.class,
                 () -> new KafkaAdminService(adminClient).resetConsumerGroupOffsets(
                         "srmm-group",
-                        new ResetOffsetsRequest(List.of(
-                                new ResetOffsetsRequest.OffsetReset("srmm.test", 0, 42)))));
+                        new ResetOffsetsRequest(null, List.of(
+                                new ResetOffsetsRequest.OffsetReset("srmm.test", 0, 42)), null)));
 
         assertEquals(409, exception.getStatus().value());
         verify(adminClient, never()).alterConsumerGroupOffsets(eq("srmm-group"), anyMap());
@@ -130,13 +134,116 @@ class KafkaAdminServiceTest {
 
         ResetOffsetsResponse response = new KafkaAdminService(adminClient).resetConsumerGroupOffsets(
                 "srmm-group",
-                new ResetOffsetsRequest(List.of(
-                        new ResetOffsetsRequest.OffsetReset("srmm.test", 2, 42))));
+                new ResetOffsetsRequest(null, List.of(
+                        new ResetOffsetsRequest.OffsetReset("srmm.test", 2, 42)), null));
 
         assertEquals("srmm-group", response.groupId());
         assertEquals(1, response.updatedPartitions());
         verify(adminClient).alterConsumerGroupOffsets(eq("srmm-group"), argThat(offsets ->
                 offsets.size() == 1
                         && offsets.get(new TopicPartition("srmm.test", 2)).offset() == 42L));
+    }
+
+    @Test
+    void resetsCommittedGroupPartitionsToEarliestOffset() {
+        AdminClient adminClient = inactiveGroupWithOffsets(Map.of(
+                new TopicPartition("srmm.test", 0), new OffsetAndMetadata(12)));
+        DescribeTopicsResult describeTopicsResult = mock(DescribeTopicsResult.class);
+        Node broker = new Node(1, "broker", 9092);
+        TopicDescription description = new TopicDescription(
+                "srmm.test",
+                false,
+                List.of(
+                        new TopicPartitionInfo(0, broker, List.of(broker), List.of(broker)),
+                        new TopicPartitionInfo(1, broker, List.of(broker), List.of(broker))));
+        ListOffsetsResult listOffsetsResult = new ListOffsetsResult(Map.of(
+                new TopicPartition("srmm.test", 0), KafkaFuture.completedFuture(offsetInfo(0)),
+                new TopicPartition("srmm.test", 1), KafkaFuture.completedFuture(offsetInfo(0))));
+        AlterConsumerGroupOffsetsResult alterResult = mock(AlterConsumerGroupOffsetsResult.class);
+        when(adminClient.describeTopics(List.of("srmm.test"))).thenReturn(describeTopicsResult);
+        when(describeTopicsResult.all()).thenReturn(KafkaFuture.completedFuture(Map.of("srmm.test", description)));
+        when(adminClient.listOffsets(anyMap())).thenReturn(listOffsetsResult);
+        when(adminClient.alterConsumerGroupOffsets(eq("srmm-group"), anyMap())).thenReturn(alterResult);
+        when(alterResult.all()).thenReturn(KafkaFuture.completedFuture(null));
+
+        ResetOffsetsResponse response = new KafkaAdminService(adminClient).resetConsumerGroupOffsets(
+                "srmm-group", new ResetOffsetsRequest(ResetOffsetsRequest.ResetMode.EARLIEST, null, null));
+
+        assertEquals(2, response.updatedPartitions());
+        verify(adminClient).listOffsets(argThat(requests ->
+                requests.size() == 2 && requests.values().stream()
+                        .allMatch(spec -> spec.getClass().getSimpleName().equals("EarliestSpec"))));
+        verify(adminClient).alterConsumerGroupOffsets(eq("srmm-group"), argThat(offsets ->
+                offsets.size() == 2
+                        && offsets.get(new TopicPartition("srmm.test", 0)).offset() == 0L
+                        && offsets.get(new TopicPartition("srmm.test", 1)).offset() == 0L));
+    }
+
+    @Test
+    void resetsLatestForAllPartitionsOfFallbackTopicsWhenGroupHasNoOffsets() {
+        AdminClient adminClient = inactiveGroupWithOffsets(Map.of());
+        DescribeTopicsResult describeTopicsResult = mock(DescribeTopicsResult.class);
+        AlterConsumerGroupOffsetsResult alterResult = mock(AlterConsumerGroupOffsetsResult.class);
+        Node broker = new Node(1, "broker", 9092);
+        TopicDescription description = new TopicDescription(
+                "srmm.test",
+                false,
+                List.of(
+                        new TopicPartitionInfo(0, broker, List.of(broker), List.of(broker)),
+                        new TopicPartitionInfo(1, broker, List.of(broker), List.of(broker))));
+        ListOffsetsResult listOffsetsResult = new ListOffsetsResult(Map.of(
+                new TopicPartition("srmm.test", 0), KafkaFuture.completedFuture(offsetInfo(100)),
+                new TopicPartition("srmm.test", 1), KafkaFuture.completedFuture(offsetInfo(200))));
+        when(adminClient.describeTopics(List.of("srmm.test"))).thenReturn(describeTopicsResult);
+        when(describeTopicsResult.all()).thenReturn(KafkaFuture.completedFuture(Map.of("srmm.test", description)));
+        when(adminClient.listOffsets(anyMap())).thenReturn(listOffsetsResult);
+        when(adminClient.alterConsumerGroupOffsets(eq("srmm-group"), anyMap())).thenReturn(alterResult);
+        when(alterResult.all()).thenReturn(KafkaFuture.completedFuture(null));
+
+        ResetOffsetsResponse response = new KafkaAdminService(adminClient).resetConsumerGroupOffsets(
+                "srmm-group",
+                new ResetOffsetsRequest(ResetOffsetsRequest.ResetMode.LATEST, null, List.of("srmm.test")));
+
+        assertEquals(2, response.updatedPartitions());
+        verify(adminClient).listOffsets(argThat(requests ->
+                requests.size() == 2 && requests.values().stream()
+                        .allMatch(spec -> spec.getClass().getSimpleName().equals("LatestSpec"))));
+        verify(adminClient).alterConsumerGroupOffsets(eq("srmm-group"), argThat(offsets ->
+                offsets.size() == 2
+                        && offsets.get(new TopicPartition("srmm.test", 0)).offset() == 100L
+                        && offsets.get(new TopicPartition("srmm.test", 1)).offset() == 200L));
+    }
+
+    @Test
+    void requiresTopicsWhenGroupHasNoCommittedOffsets() {
+        AdminClient adminClient = inactiveGroupWithOffsets(Map.of());
+
+        AdminApiException exception = assertThrows(
+                AdminApiException.class,
+                () -> new KafkaAdminService(adminClient).resetConsumerGroupOffsets(
+                        "srmm-group",
+                        new ResetOffsetsRequest(ResetOffsetsRequest.ResetMode.LATEST, null, null)));
+
+        assertEquals(400, exception.getStatus().value());
+        verify(adminClient, never()).listOffsets(anyMap());
+        verify(adminClient, never()).alterConsumerGroupOffsets(eq("srmm-group"), anyMap());
+    }
+
+    private AdminClient inactiveGroupWithOffsets(Map<TopicPartition, OffsetAndMetadata> offsets) {
+        AdminClient adminClient = mock(AdminClient.class);
+        DescribeConsumerGroupsResult describeResult = mock(DescribeConsumerGroupsResult.class);
+        ConsumerGroupDescription group = mock(ConsumerGroupDescription.class);
+        ListConsumerGroupOffsetsResult offsetsResult = mock(ListConsumerGroupOffsetsResult.class);
+        when(adminClient.describeConsumerGroups(List.of("srmm-group"))).thenReturn(describeResult);
+        when(describeResult.describedGroups()).thenReturn(
+                Map.of("srmm-group", KafkaFuture.completedFuture(group)));
+        when(group.members()).thenReturn(Set.of());
+        when(adminClient.listConsumerGroupOffsets("srmm-group")).thenReturn(offsetsResult);
+        when(offsetsResult.partitionsToOffsetAndMetadata()).thenReturn(KafkaFuture.completedFuture(offsets));
+        return adminClient;
+    }
+
+    private ListOffsetsResultInfo offsetInfo(long offset) {
+        return new ListOffsetsResultInfo(offset, -1L, java.util.Optional.empty());
     }
 }
