@@ -5,6 +5,7 @@ import cl.srmm.kafka.admin.api.dto.ConsumerGroupDetails;
 import cl.srmm.kafka.admin.api.dto.ConsumerGroupSummary;
 import cl.srmm.kafka.admin.api.dto.CreateTopicRequest;
 import cl.srmm.kafka.admin.api.dto.ResetOffsetsRequest;
+import cl.srmm.kafka.admin.api.dto.ResetOffsetsRequest.ResetMode;
 import cl.srmm.kafka.admin.api.dto.ResetOffsetsResponse;
 import cl.srmm.kafka.admin.api.dto.TopicConfigRequest;
 import cl.srmm.kafka.admin.api.dto.TopicDetails;
@@ -16,6 +17,7 @@ import org.apache.kafka.clients.admin.NewPartitions;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.admin.OffsetSpec;
 import org.apache.kafka.clients.admin.TopicDescription;
+import org.apache.kafka.clients.admin.ListOffsetsResult.ListOffsetsResultInfo;
 import org.apache.kafka.common.KafkaFuture;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.clients.admin.Config;
@@ -167,15 +169,83 @@ public class KafkaAdminService {
             throw new AdminApiException(HttpStatus.CONFLICT, "El consumer group debe estar inactivo para resetear offsets.");
         }
 
+        ResetMode mode = request.effectiveMode();
+        if (mode == null) {
+            throw new AdminApiException(HttpStatus.BAD_REQUEST, "Se requiere modo o offsets para resetear.");
+        }
+
+        Map<TopicPartition, OffsetAndMetadata> offsets = mode == ResetMode.ESPECIFICO
+                ? explicitOffsets(request)
+                : offsetsAtBoundary(groupId, request, mode);
+        LOGGER.info("Resetting Kafka consumer group offsets. groupId={} mode={} partitions={}",
+                groupId, mode, offsets.size());
+        await(adminClient.alterConsumerGroupOffsets(groupId, offsets).all(),
+                "reset offsets for group " + groupId);
+        return new ResetOffsetsResponse(groupId, offsets.size());
+    }
+
+    private Map<TopicPartition, OffsetAndMetadata> explicitOffsets(ResetOffsetsRequest request) {
         Map<TopicPartition, OffsetAndMetadata> offsets = new LinkedHashMap<>();
         request.offsets().forEach(offset -> offsets.put(
                 new TopicPartition(offset.topic(), offset.partition()),
                 new OffsetAndMetadata(offset.offset())));
-        LOGGER.info("Resetting Kafka consumer group offsets. groupId={} partitions={}",
-                groupId, offsets.size());
-        await(adminClient.alterConsumerGroupOffsets(groupId, offsets).all(),
-                "reset offsets for group " + groupId);
-        return new ResetOffsetsResponse(groupId, offsets.size());
+        return offsets;
+    }
+
+    private Map<TopicPartition, OffsetAndMetadata> offsetsAtBoundary(
+            String groupId,
+            ResetOffsetsRequest request,
+            ResetMode mode
+    ) {
+        Map<TopicPartition, OffsetAndMetadata> committedOffsets = await(
+                adminClient.listConsumerGroupOffsets(groupId).partitionsToOffsetAndMetadata(),
+                "list offsets for group " + groupId);
+        List<String> topics;
+        if (!committedOffsets.isEmpty()) {
+            topics = committedOffsets.keySet().stream()
+                    .map(TopicPartition::topic)
+                    .distinct()
+                    .sorted()
+                    .toList();
+        } else {
+            if (request.topics() == null || request.topics().isEmpty()) {
+                throw new AdminApiException(
+                        HttpStatus.BAD_REQUEST,
+                        "El grupo no tiene offsets confirmados; indica topics para resolver las particiones.");
+            }
+            topics = request.topics();
+        }
+        List<TopicPartition> partitions = partitionsForTopics(topics);
+        if (partitions.isEmpty()) {
+            throw new AdminApiException(HttpStatus.BAD_REQUEST, "No se encontraron particiones para resetear.");
+        }
+
+        OffsetSpec offsetSpec = mode == ResetMode.EARLIEST ? OffsetSpec.earliest() : OffsetSpec.latest();
+        Map<TopicPartition, OffsetSpec> requests = partitions.stream()
+                .collect(Collectors.toMap(partition -> partition, partition -> offsetSpec));
+        Map<TopicPartition, ListOffsetsResultInfo> boundaryOffsets = await(
+                adminClient.listOffsets(requests).all(), "resolve " + mode + " offsets for group " + groupId);
+        Map<TopicPartition, OffsetAndMetadata> offsets = new LinkedHashMap<>();
+        for (TopicPartition partition : partitions) {
+            ListOffsetsResultInfo result = boundaryOffsets.get(partition);
+            if (result == null) {
+                throw new AdminApiException(
+                        HttpStatus.BAD_REQUEST,
+                        "No se pudo resolver el offset para " + partition.topic() + "-" + partition.partition() + ".");
+            }
+            offsets.put(partition, new OffsetAndMetadata(result.offset()));
+        }
+        return offsets;
+    }
+
+    private List<TopicPartition> partitionsForTopics(List<String> topics) {
+        Map<String, TopicDescription> descriptions = await(
+                adminClient.describeTopics(topics).all(), "describe reset topics");
+        return descriptions.values().stream()
+                .flatMap(description -> description.partitions().stream()
+                        .map(partition -> new TopicPartition(description.name(), partition.partition())))
+                .sorted(Comparator.comparing(TopicPartition::topic).thenComparingInt(TopicPartition::partition))
+                .toList();
     }
 
     public void deleteConsumerGroup(String groupId) {
