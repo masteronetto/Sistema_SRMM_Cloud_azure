@@ -53,6 +53,7 @@ module.exports = {
       max_memory_restart: '384M',
       env: {
         SERVER_PORT: process.env.KAFKA_ADMIN_PORT || '3003',
+        SERVER_ADDRESS: process.env.KAFKA_SERVER_ADDRESS || '127.0.0.1',  
         KAFKA_BOOTSTRAP_SERVERS: process.env.KAFKA_BOOTSTRAP_SERVERS || 'localhost:9092,localhost:9093,localhost:9094',
         AZURE_TENANT_ID: process.env.AZURE_TENANT_ID || '',
         AZURE_API_AUDIENCE: process.env.AZURE_API_AUDIENCE || '',
@@ -94,8 +95,9 @@ module.exports = {
       autorestart: true,
       watch: false,
       max_memory_restart: '384M',
-      env: {
+       env: {
         SERVER_PORT: process.env.KAFKA_ANALITICA_PORT || '3004',
+        SERVER_ADDRESS: process.env.KAFKA_SERVER_ADDRESS || '127.0.0.1',  
         KAFKA_BOOTSTRAP_SERVERS: process.env.KAFKA_BOOTSTRAP_SERVERS || 'localhost:9092,localhost:9093,localhost:9094',
         KAFKA_TOPIC_OPERATIONAL_EVENTS: process.env.KAFKA_TOPIC_OPERATIONAL_EVENTS || 'srmm.eventos-operacionales',
         KAFKA_TOPIC_MACHINERY_STATE: process.env.KAFKA_TOPIC_MACHINERY_STATE || 'srmm.estado-maquinaria',
