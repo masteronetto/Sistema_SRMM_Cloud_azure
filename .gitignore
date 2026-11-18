@@ -26,3 +26,4 @@ logs/
 kafka-data/
 kafka-logs/
 !**/.env.example
+*.bak

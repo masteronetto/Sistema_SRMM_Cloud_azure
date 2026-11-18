@@ -98,7 +98,7 @@ En una instancia con RAM limitada, usa dos brokers y factor de réplica 2. Expor
 export KAFKA_REPLICATION_FACTOR=2
 export KAFKA_MIN_INSYNC_REPLICAS=2
 export KAFKA_BOOTSTRAP_SERVERS=localhost:9092,localhost:9093
-docker compose -f docker-compose.kafka.yml up -d zookeeper kafka1 kafka2
+docker compose -f docker-compose.kafka.yml up -d zookeeper1 zookeeper2 zookeeper3 kafka1 kafka2
 bash scripts/kafka/create-topics.sh
 ```
 

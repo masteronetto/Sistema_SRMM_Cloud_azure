@@ -1,35 +1,78 @@
 name: srmm-kafka
 
 services:
-  zookeeper:
+  zookeeper1:
     image: confluentinc/cp-zookeeper:7.5.0
-    hostname: zookeeper
-    environment:
+    hostname: zookeeper1
+    environment: &zk-env
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
+      ZOOKEEPER_INIT_LIMIT: 5
+      ZOOKEEPER_SYNC_LIMIT: 2
+      ZOOKEEPER_SERVERS: zookeeper1:2888:3888;zookeeper2:2888:3888;zookeeper3:2888:3888
+      KAFKA_HEAP_OPTS: "-Xms128m -Xmx256m"
+      KAFKA_OPTS: "-Dzookeeper.4lw.commands.whitelist=ruok,srvr,stat,mntr"
+      ZOOKEEPER_SERVER_ID: 1
     volumes:
-      - zookeeper_data:/var/lib/zookeeper/data
-      - zookeeper_log:/var/lib/zookeeper/log
+      - zookeeper1_data:/var/lib/zookeeper/data
+      - zookeeper1_log:/var/lib/zookeeper/log
     networks:
       - srmm-kafka
     healthcheck:
-      test: ["CMD", "cub", "zk-ready", "localhost:2181", "10"]
+      test: ["CMD-SHELL", "echo ruok | nc -w 2 localhost 2181 | grep imok"]
       interval: 10s
-      timeout: 10s
+      timeout: 5s
       retries: 10
-      start_period: 10s
+
+  zookeeper2:
+    image: confluentinc/cp-zookeeper:7.5.0
+    hostname: zookeeper2
+    environment:
+      <<: *zk-env
+      ZOOKEEPER_SERVER_ID: 2
+    volumes:
+      - zookeeper2_data:/var/lib/zookeeper/data
+      - zookeeper2_log:/var/lib/zookeeper/log
+    networks:
+      - srmm-kafka
+    healthcheck:
+      test: ["CMD-SHELL", "echo ruok | nc -w 2 localhost 2181 | grep imok"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  zookeeper3:
+    image: confluentinc/cp-zookeeper:7.5.0
+    hostname: zookeeper3
+    environment:
+      <<: *zk-env
+      ZOOKEEPER_SERVER_ID: 3
+    volumes:
+      - zookeeper3_data:/var/lib/zookeeper/data
+      - zookeeper3_log:/var/lib/zookeeper/log
+    networks:
+      - srmm-kafka
+    healthcheck:
+      test: ["CMD-SHELL", "echo ruok | nc -w 2 localhost 2181 | grep imok"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
 
   kafka1:
     image: confluentinc/cp-kafka:7.5.0
     hostname: kafka1
     depends_on:
-      zookeeper:
+      zookeeper1:
+        condition: service_healthy
+      zookeeper2:
+        condition: service_healthy
+      zookeeper3:
         condition: service_healthy
     ports:
       - "127.0.0.1:9092:9092"
     environment:
       KAFKA_BROKER_ID: 1
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper1:2181,zookeeper2:2181,zookeeper3:2181
       KAFKA_LISTENERS: INTERNAL://0.0.0.0:29092,EXTERNAL://0.0.0.0:9092
       KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka1:29092,EXTERNAL://localhost:9092
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT
@@ -56,13 +99,17 @@ services:
     image: confluentinc/cp-kafka:7.5.0
     hostname: kafka2
     depends_on:
-      zookeeper:
+      zookeeper1:
+        condition: service_healthy
+      zookeeper2:
+        condition: service_healthy
+      zookeeper3:
         condition: service_healthy
     ports:
       - "127.0.0.1:9093:9092"
     environment:
       KAFKA_BROKER_ID: 2
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper1:2181,zookeeper2:2181,zookeeper3:2181
       KAFKA_LISTENERS: INTERNAL://0.0.0.0:29092,EXTERNAL://0.0.0.0:9092
       KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka2:29092,EXTERNAL://localhost:9093
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT
@@ -89,13 +136,17 @@ services:
     image: confluentinc/cp-kafka:7.5.0
     hostname: kafka3
     depends_on:
-      zookeeper:
+      zookeeper1:
+        condition: service_healthy
+      zookeeper2:
+        condition: service_healthy
+      zookeeper3:
         condition: service_healthy
     ports:
       - "127.0.0.1:9094:9092"
     environment:
       KAFKA_BROKER_ID: 3
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper1:2181,zookeeper2:2181,zookeeper3:2181
       KAFKA_LISTENERS: INTERNAL://0.0.0.0:29092,EXTERNAL://0.0.0.0:9092
       KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka3:29092,EXTERNAL://localhost:9094
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT
@@ -124,8 +175,12 @@ networks:
     driver: bridge
 
 volumes:
-  zookeeper_data:
-  zookeeper_log:
+  zookeeper1_data:
+  zookeeper1_log:
+  zookeeper2_data:
+  zookeeper2_log:
+  zookeeper3_data:
+  zookeeper3_log:
   kafka1_data:
   kafka2_data:
   kafka3_data:
