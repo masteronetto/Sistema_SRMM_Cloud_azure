@@ -5,6 +5,12 @@ spring:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092,localhost:9093,localhost:9094}
 
 srmm:
+  security:
+    azure:
+      enabled: ${AZURE_AUTH_ENABLED:true}
+      tenant-id: ${AZURE_TENANT_ID:}
+      audience: ${AZURE_API_AUDIENCE:}
+      required-scope: ${AZURE_REQUIRED_SCOPE:access_as_user}
   kafka:
     topics:
       operational-events: ${KAFKA_TOPIC_OPERATIONAL_EVENTS:srmm.eventos-operacionales}
