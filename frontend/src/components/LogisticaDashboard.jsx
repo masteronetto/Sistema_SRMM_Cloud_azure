@@ -162,7 +162,14 @@ export default function LogisticaDashboard() {
               <span>Máquina</span>
               <select value={form.maquinaria_id_maquina} onChange={(e) => setForm({ ...form, maquinaria_id_maquina: e.target.value })}>
                 <option value="">Sin máquina</option>
-                {machines.map((machine) => <option value={machine.id} key={machine.id}>{machine.modelo_equipo}</option>)}
+                {machines.map((machine) => {
+                  const machineId = machine.id_maquina ?? machine.id;
+                  return (
+                    <option value={machineId} key={machineId}>
+                      {machine.modelo_equipo}
+                    </option>
+                  );
+                })}
               </select>
             </label>
             <label className="arriendo-form-field">
@@ -217,7 +224,7 @@ export default function LogisticaDashboard() {
                   <td>{row.ruta}</td>
                   <td>{row.hora_evento}</td>
                   <td>{row.estado_evento}</td>
-                  <td>{row.maquinaria_id_maquina ?? '—'}</td>
+                  <td>{row.maquinaria_modelo ?? row.maquinaria_id_maquina ?? '—'}</td>
                   <td>{row.arriendos_id_contrato ?? '—'}</td>
                   <td>
                     <div className="table-actions">
