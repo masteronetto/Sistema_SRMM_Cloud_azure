@@ -224,7 +224,7 @@ export default function LogisticaDashboard() {
                   <td>{row.ruta}</td>
                   <td>{row.hora_evento}</td>
                   <td>{row.estado_evento}</td>
-                  <td>{row.maquinaria_modelo ?? row.maquinaria_id_maquina ?? '—'}</td>
+                  <td>{row.maquinaria_modelo ?? machines.find((m) => String(m.id_maquina ?? m.id) === String(row.maquinaria_id_maquina))?.modelo_equipo ?? row.maquinaria_id_maquina ?? '—'}</td>
                   <td>{row.arriendos_id_contrato ?? '—'}</td>
                   <td>
                     <div className="table-actions">
