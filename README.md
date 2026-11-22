@@ -247,6 +247,78 @@ El código de referencia se encuentra en
 [NotificationEventHandler.java](services/notificaciones-spring/src/main/java/cl/srmm/notificaciones/service/NotificationEventHandler.java)
 y [rabbit.publisher.js](backend/src/messaging/rabbit.publisher.js).
 
+### 6.3 Streaming de eventos con Apache Kafka
+
+Kafka se incorpora como plataforma de eventos duradera y reprocesable. No reemplaza a RabbitMQ: RabbitMQ sigue enrutando y entregando las notificaciones por dominio, y un puente (`kafka-bridge`) traslada cada evento a Kafka para la analítica, la auditoría y el reprocesamiento.
+
+**Clúster (Docker Compose).**
+
+| Archivo | Contenido |
+|---|---|
+| `docker-compose.kafka.yml` | 3 nodos ZooKeeper (`zookeeper1`, `zookeeper2`, `zookeeper3`, imagen `cp-zookeeper:7.5.0`) y 3 brokers (`kafka1`, `kafka2`, `kafka3`, imagen `cp-kafka:7.5.0`). Los brokers publican puertos solo en `127.0.0.1:9092`, `9093` y `9094`. |
+| `docker-compose.kafka-ui.yml` | Kafka-UI en `127.0.0.1:8085` (se consulta por túnel SSH). |
+
+**Tópicos** (creados con `scripts/kafka/create-topics.sh`, idempotente).
+
+| Tópico | Particiones | Replicación | Configuración |
+|---|---:|---:|---|
+| `srmm.eventos-operacionales` | 3 | 3 | `cleanup.policy=delete`, retención 7 días, `min.insync.replicas=2` |
+| `srmm.estado-maquinaria` | 3 | 3 | `cleanup.policy=compact`, `min.insync.replicas=2` |
+| `srmm.eventos-operacionales.DLT` | 1 | 3 | retención 30 días |
+| `srmm.estado-maquinaria.DLT` | 1 | 3 | retención 30 días |
+
+**Servicios.**
+
+| Servicio | Función |
+|---|---|
+| `services/kafka-bridge` | Consume colas `kafka.bridge.*` de RabbitMQ (confirmación manual) y publica en Kafka con `acks=all` e idempotencia. Confirma a RabbitMQ solo cuando Kafka reconoció el mensaje. |
+| `services/kafka-analitica` | Consumidores en grupos independientes (`analitica-group`, `auditoria-group`, `analitica-dlt-group`). Reintenta con espera exponencial y deriva a los tópicos DLT. Expone `GET /analitica/resumen` (puerto 3004, solo `127.0.0.1`), protegido con JWT de Microsoft Entra ID. |
+| `services/kafka-admin` | API REST (puerto 3003, solo `127.0.0.1`) para listar, crear, modificar y eliminar tópicos y configuraciones, consultar grupos y reiniciar offsets. Exige JWT de Entra ID con scope y rol `Administrador`. |
+
+**Puesta en marcha.**
+
+```bash
+docker compose -f docker-compose.kafka.yml up -d
+docker compose -f docker-compose.kafka-ui.yml up -d
+bash scripts/kafka/create-topics.sh
+```
+
+**Verificación del quórum de ZooKeeper** (debe haber 1 `leader` y 2 `follower`, y los brokers `[1, 2, 3]`):
+
+```bash
+for z in zookeeper1 zookeeper2 zookeeper3; do
+  echo -n "$z: "; docker compose -f docker-compose.kafka.yml exec -T $z bash -c 'echo srvr | nc localhost 2181 | grep Mode'
+done
+docker compose -f docker-compose.kafka.yml exec -T kafka1 zookeeper-shell zookeeper1:2181 ls /brokers/ids
+```
+
+**Notas de operación.**
+
+- Tras reiniciar la instancia EC2 el clúster no arranca solo: hay que ejecutar de nuevo los dos `docker compose ... up -d`.
+- `docker compose down -v` borra los volúmenes (tópicos y offsets); después hay que volver a ejecutar `create-topics.sh`.
+- Con un nodo ZooKeeper caído el ensemble mantiene quórum (2 de 3) y la publicación de eventos continúa.
+
+### 6.4 Listeners de DLQ
+
+Los mensajes rechazados terminan en las colas de mensajes no entregados (DLQ). Dos listeners las consumen y registran el id del evento, la cola de origen y el motivo (cabecera `x-death`):
+
+| Servicio | Clase | DLQ que consume |
+|---|---|---|
+| `notificaciones-spring` | `cl.srmm.notificaciones.dlq.DeadLetterListener` | `srmm.notificaciones.arriendo-creado.dlq`, `srmm.notificaciones.logistica-estado.dlq`, `srmm.tickets.incidencia-critica.dlq` |
+| `kafka-bridge` | `cl.srmm.kafka.bridge.dlq.DeadLetterListener` | `kafka.bridge.arriendos.dlq`, `kafka.bridge.logistica.dlq`, `kafka.bridge.mantenimientos.dlq` |
+
+Ejemplo de registro:
+
+```text
+WARN ... DeadLetterListener : Mensaje no entregado en DLQ: id=prueba-dlq-1 cola=srmm.notificaciones.logistica-estado motivo=rejected muertes=1
+```
+
+El listener se puede desactivar con la propiedad `srmm.dlq-listener.enabled=false` (las pruebas de integración de `notificaciones-spring` lo hacen para poder leer las DLQ directamente).
+
+### 6.5 Observación sobre el clúster de RabbitMQ
+
+RabbitMQ opera como un **único nodo** con Docker Compose en la instancia EC2, con sus colas, exchanges, bindings, DLQ y el microservicio administrador (`rabbit-admin`). Por indicación del docente, no se levantó un clúster de varios nodos; se deja constancia de esta observación para la evaluación del indicador *"Levanta un clúster RabbitMQ en la nube utilizando Docker-compose"*.
+
 ## 7. Seguridad y control de acceso
 
 El backend valida los tokens emitidos por Microsoft Entra ID antes de
@@ -377,6 +449,23 @@ la sesión local usando la contraseña de desarrollo antes de iniciar el
 servicio. En el entorno de despliegue, PM2 recibe `RABBITMQ_USER` y
 `RABBITMQ_PASSWORD` desde la configuración segura del servidor.
 
+### 9.6 Variables de entorno
+
+Cada servicio incluye un `.env.example` con los nombres de las variables que utiliza. Se copia como `.env` (o se carga en el entorno del proceso) y se completan los valores reales, que no se versionan.
+
+| Servicio | Archivo de ejemplo |
+|---|---|
+| Raíz | `.env.example` |
+| Backend (BFF) | `backend/.env.example` |
+| Frontend | `frontend/.env.example` |
+| Infraestructura | `infra/.env.example` |
+| `kafka-admin` | `services/kafka-admin/.env.example` |
+| `kafka-analitica` | `services/kafka-analitica/.env.example` |
+| `kafka-bridge` | `services/kafka-bridge/.env.example` |
+| `notificaciones-spring` | `services/notificaciones-spring/.env.example` |
+| `notificaciones` (Node) | `services/notificaciones/.env.example` |
+| `rabbit-admin` | `services/rabbit-admin/.env.example` |
+
 ## 10. Pruebas y verificación
 
 Las pruebas integradas utilizan una instancia RabbitMQ exclusiva para
@@ -463,6 +552,21 @@ confirmación del evento en la aplicación y el log del consumidor.
 El estado de PM2 se guardó para su recuperación después de un reinicio. El
 archivo `~/.pm2/dump.pm2` puede contener variables de entorno sensibles y se
 protegió con permisos `600`; no debe copiarse ni publicarse en el repositorio.
+
+### 10.2 Resumen de suites de pruebas
+
+| Servicio | Pruebas | Comando |
+|---|---:|---|
+| `backend` (BFF) | 8 | `npm test` |
+| `rabbit-admin` | 10 | `npm test` (la de integración requiere `RABBITMQ_TEST_URL` y `RABBITMQ_TEST_MANAGEMENT_URL`, sin credenciales en la segunda) |
+| `notificaciones` (Node) | 2 | `npm test` |
+| `notificaciones-spring` | 16 | `./mvnw test` (requiere el broker de pruebas: `docker compose -f docker-compose.test.yml up -d --wait` con `RABBITMQ_TEST_PASSWORD` definida) |
+| `kafka-bridge` | 12 | `./mvnw test` |
+| `kafka-analitica` | 13 | `./mvnw test` |
+| `kafka-admin` | 15 | `./mvnw test` |
+| `frontend` | compilación | `npm run build` |
+
+Las pruebas de los servicios Java con Kafka y RabbitMQ no necesitan los brokers reales, salvo las de integración de `notificaciones-spring`, que usan un RabbitMQ de pruebas aparte (puerto 5673) para no tocar el broker real.
 
 ## 11. Despliegue
 
